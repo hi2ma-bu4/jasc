@@ -2,6 +2,11 @@
 
 汎用私的ライブラリです。
 
+> CDNのURL
+> ```
+> https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
+> ```
+
 ### 以下のファイルは著作権に注意
 * `jascLib/berylLib/cheep-compressor.min.js`
   * https://github.com/utubo/js-cheep-compressor
