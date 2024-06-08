@@ -796,7 +796,7 @@ class Jasc {
 		window.addEventListener("resize", function (e) {
 			_this._dispatchEvent("windowResize", [e]);
 			if (_this.#jasc_settingData.isCanvasAutoResize) {
-				jPro.game.canvasResize();
+				_this.game.canvasResize();
 			}
 		});
 		//* ウィンドウフォーカス
@@ -1492,7 +1492,7 @@ class Jasc {
 				continue;
 			}
 			elem.classList.add("jascExLinkGetter");
-			if (jPro.isExternalLink(elem)) {
+			if (this.isExternalLink(elem)) {
 				// 別ウィンドウに飛ばす
 				if (!elem?.target || elem.target != "_self") {
 					elem.target = "_blank";
@@ -1505,7 +1505,7 @@ class Jasc {
 				}
 				elem.classList.add("jascExLink");
 				// テキストの場合のみ
-				if (jPro.isTextNode(elem)) {
+				if (this.isTextNode(elem)) {
 					elem.classList.add("jascExTextLink");
 					this._dispatchEvent("exTextLinkGet", [elem]);
 				}
@@ -1655,7 +1655,7 @@ class Jasc {
 			return list;
 		}
 		if (Jasc.objHasOwnProperty(this.#jasc_events, eventType)[0]) {
-			if (jPro.isAssociative(this.#jasc_events?.[eventType])) {
+			if (Jasc.isAssociative(this.#jasc_events?.[eventType])) {
 				if (name != "") {
 					if (typeof this.#jasc_events?.[eventType]?.[name] != "function") {
 						return 2;
