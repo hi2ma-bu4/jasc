@@ -1,4 +1,4 @@
-// jasc.js Ver.1.13.2
+// jasc.js Ver.1.13.3
 
 /*
 ! ！！注意！！
@@ -675,6 +675,7 @@ class Jasc {
 		pressKeySet: new Set(),
 
 		isDrawing: true,
+		isOverFrame: false,
 
 		// ゲッター群
 		get urlQuery() {
@@ -1543,6 +1544,7 @@ class Jasc {
 				if (this.#_fps_BBForward > 50) {
 					this.#_fps_BBForward = 50;
 				}
+				this.#jasc_readonlyData.isOverFrame = this.#_fps_BBForward > 20;
 			} else {
 				this.#_fps_BBForward = 0;
 			}
@@ -1579,7 +1581,7 @@ class Jasc {
 			this._dispatchEvent("keyPress", [this.#jasc_readonlyData.pressKeySet]);
 		}
 
-		this._dispatchEvent("gameFrameUpdate", [this.#jasc_readonlyData.isDrawing]);
+		this._dispatchEvent("gameFrameUpdate", [this.#jasc_readonlyData.isDrawing, this.#jasc_readonlyData.isOverFrame]);
 
 		return;
 	}
