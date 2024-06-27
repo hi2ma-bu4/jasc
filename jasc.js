@@ -1,4 +1,4 @@
-// jasc.js Ver.1.13.6
+// jasc.js Ver.1.13.7
 
 /*
 ! ！！注意！！
@@ -2642,7 +2642,7 @@ class Jasc {
 			xhr.abort();
 			error(xhr, "timeout", event);
 			complete(xhr, xhr.responseType);
-		}, timeout + 1000);
+		}, timeout + 200);
 
 		xhr.onload = function (event) {
 			clearTimeout(timer);
