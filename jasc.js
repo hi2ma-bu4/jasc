@@ -1,4 +1,4 @@
-// jasc.js Ver.1.13.4
+// jasc.js Ver.1.13.5
 
 /*
 ! ！！注意！！
@@ -2636,7 +2636,15 @@ class Jasc {
 		xhr.responseType = dataType;
 
 		// Event
+		const timer = setTimeout(function () {
+			clearTimeout(timer);
+			xhr.onload = xhr.onerror = xhr.ontimeout = null;
+			error(xhr, "timeout", event);
+			complete(xhr, xhr.responseType);
+		}, timeout + 1000);
+
 		xhr.onload = function (event) {
+			clearTimeout(timer);
 			xhr.onload = xhr.onerror = xhr.ontimeout = null;
 			if (xhr.readyState === 4) {
 				if (xhr.status === 200) {
@@ -2647,14 +2655,16 @@ class Jasc {
 				complete(xhr, xhr.responseType);
 			}
 		};
-		xhr.onerror = function (event) {
-			xhr.onload = xhr.onerror = xhr.ontimeout = null;
-			error(xhr, event.target.response.message, event);
-			complete(xhr, xhr.responseType);
-		};
 		xhr.ontimeout = function (event) {
+			clearTimeout(timer);
 			xhr.onload = xhr.onerror = xhr.ontimeout = null;
 			error(xhr, "timeout", event);
+			complete(xhr, xhr.responseType);
+		};
+		xhr.onerror = function (event) {
+			clearTimeout(timer);
+			xhr.onload = xhr.onerror = xhr.ontimeout = null;
+			error(xhr, event.target.response.message, event);
 			complete(xhr, xhr.responseType);
 		};
 
