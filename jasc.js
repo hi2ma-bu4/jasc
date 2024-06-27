@@ -1,4 +1,4 @@
-// jasc.js Ver.1.13.3
+// jasc.js Ver.1.13.4
 
 /*
 ! ！！注意！！
@@ -52,12 +52,17 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 ? jasc動作関連
 * jasc.initSetting = args												//jasc初期設定(DOMContentLoaded以降変更不可)
 * jasc.setting = args													//jasc設定
-* jasc.addEventListener(eventType = "", callback, name = "")			//jasc内イベント設定
+* jasc.addEventListener(eventType = "", callback, name = "", returnName = false)	//jasc内イベント設定
+* jasc.on(eventType = "", callback, name = "", returnName = false)																//jasc.addEventListenerと同じ
 * jasc.removeEventListener(eventType = "", name = "")					//jasc内イベント解除
+* jasc.off(eventType = "", name = "")															//jasc.removeEventListenerと同じ
 - jasc._dispatchEvent(eventType = "", args = [])						//jasc内イベント発火[システム使用用]
 
-* jasc.on()																//jasc.addEventListenerと同じ
-* jasc.off()															//jasc.removeEventListenerと同じ
+*- jasc開発者用関数
+* jasc.develop.createEvent(name)										//jasc内イベントリスナーの追加
+* jasc.develop.addPlugins(callback, name = "", opt = {})				//プラグインの登録
+* jasc.develop.hasPlugins(name)											//プラグインが適用されているか
+
 *- 読み取り専用
 * jasc.readonly															//jasc内静的変数一覧
 
@@ -65,8 +70,10 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 /*
 ? 機能
 *- 基本構成(DOM)
+- Jasc.acq(str, par = document) 										//要素取得(jQuery非対応版)
 * jasc.acq(str, par = document) 										//要素取得
 * jasc.jQueryObjToDOM(obj)												//jQueryオブジェクト→DOM変換
+- Jasc.toggleClass(name, str)											//クラス反転(jQuery非対応版)
 * jasc.toggleClass(name, str)											//クラス反転
 * Jasc.cssVariableIO(name, val)											//css変数取得&書き換え
 - jasc.cssVariableIO(name, val)
@@ -76,7 +83,7 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 - jasc.scrollbarYVisible(elem = document.body)
 * Jasc.getScrollVerticalPosition(e, margin = 0)							//スクロール位置判定
 - jasc.getScrollVerticalPosition(e, margin = 0)
-* jasc.loadFile(src, opt = {})								//ファイル動的読み込み
+* jasc.loadFile(src, opt = {})											//ファイル動的読み込み
 * jasc.isExternalLink(elem)												//外部リンク判定
 * jasc.isTextNode(elem)													//テキストノード判定
 * jasc.waitForElement(selector, text = null, timeoutMs = 0, par = document)			//dom出現待機
@@ -93,24 +100,21 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 * Jasc.dataTypeFormatting(data, nestingDepth = 0)						//型統一変換
 - jasc.dataTypeFormatting(data, nestingDepth = 0)
 *- canvas描画
-* Jasc.draw.text(ctx, x, y, text, size, color, align = "center", base = "middle")	//canvasテキスト描画
-- jasc.draw.text(ctx, x, y, text, size, color, align = "center", base = "middle")
-* Jasc.draw.line(ctx, x1, y1, x2, y2, color)										//canvas線描画
-- jasc.draw.line(ctx, x1, y1, x2, y2, color)
-* Jasc.draw.rect(ctx, x, y, w, h, color)											//canvas四角形描画
-- jasc.draw.rect(ctx, x, y, w, h, color)
-* Jasc.draw.circle(ctx, x, y, r, color1, color2 = null)								//canvas円描画
-- jasc.draw.circle(ctx, x, y, r, color1, color2 = null)
-* Jasc.draw.triangle(ctx, x1, y1, x2, y2, x3, y3, color)							//canvas三角形描画
-- jasc.draw.triangle(ctx, x1, y1, x2, y2, x3, y3, color)
+* jasc.draw.text(ctx, xy, text, size, color, align = "center", base = "middle")	//canvasテキスト描画
+* jasc.draw.line(ctx, xy1, xy2, color)										//canvas線描画
+* jasc.draw.rect(ctx, xy, wh, color)											//canvas四角形描画
+* jasc.draw.circle(ctx, xy, r, color1, color2 = null)								//canvas円描画
+* jasc.draw.triangle(ctx, xy1, xy2, xy3, color)							//canvas三角形描画
 *- game動作
+* jasc.game.changeCurrentCanvas(key = "")								//現在のカレントキャンバスの管理
 * jasc.game.canvasResize(width = 0, height = 0)							//ゲーム画面リサイズ
 *- 連想配列計算
 * Jasc.isAssociative(obj)												//連想配列判定
 - jasc.isAssociative(obj)
 * Jasc.overwriteAssociative(parents, child = {})						//連想配列を結合(上書き)[破壊的関数]
 - jasc.overwriteAssociative(parents, child = {})
-* jasc.setAssociativeAutoName(obj = {}, data = null, baseName = "", prefix = "-")		//連想配列自動名前付け
+* Jasc.setAssociativeAutoName(obj = {}, data = null, baseName = "", prefix = "-")		//連想配列自動名前付け
+- jasc.setAssociativeAutoName(obj = {}, data = null, baseName = "", prefix = "-")
 *- 文字計算
 * Jasc.uspTosp(str)														//不明な空白を半角スペースに変換
 - jasc.uspTosp(str)
@@ -131,8 +135,6 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 - jasc.totp(key)
 * Jasc.formatDate(date, format)											//GASのUtilities.formatDateの下位互換
 - jasc.formatDate(date, format)
-* Jasc.formatTime(ti)													//msを y年 mヶ月 d日 h時間 m分 s秒 に変換
-- jasc.formatTime(ti)
 * jasc.permutation(arr, number = 0)										//組み合わせ列挙
 * Jasc.compareFloats(a, b)												//小数丸め誤差を無視して比較
 - jasc.compareFloats(a, b)
@@ -174,7 +176,7 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 - jasc.removeCookie(name)
 * Jasc.setCookie(name, value, opt = {})									//クッキー設定
 - jasc.setCookie(name, value, opt = {})
-*- 既存関数を使いやすく
+*- オブジェクト操作
 * async Jasc.replaceAsync(str, regex, asyncFn)								//replaceの非同期版
 - async jasc.replaceAsync(str, regex, asyncFn)
 * jasc.objDefineProperty(obj, name, opt = {})							//definePropertyを使いやすく
@@ -182,6 +184,12 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 - jasc.getObjectPropertyNames(obj, depth = 0, isEnumerable = false)
 * Jasc.objHasOwnProperty(obj, key)										//hasOwnPropertyを使いやすく
 - jasc.objHasOwnProperty(obj, key)
+* Jasc.isSetter(obj, key)												//メゾットがセッターかを判定
+- jasc.isSetter(obj, key)
+* Jasc.isGetter(obj, key)												//メゾットがゲッターかを判定
+- jasc.isGetter(obj, key)
+
+*- 標準関数を使いやすく
 * jasc.pressKey(code, type = "keydown", opt = {}, elem = window)		//キーを押す
 
 * Jasc.requestAnimationFrame()											//requestAnimationFrameの表記ブレを纏めただけ
@@ -271,18 +279,27 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 * gameInit					//ゲーム初期化時
 * gameRequestAnimationFrame	//RequestAnimationFrameのタイミングで実行
 * gameFrameUpdate			//ゲーム(仮想)フレーム更新時
+* canvasAdd					//キャンバス追加時
+* ctxAdd
 * canvasResize				//キャンバスサイズ変更時
+*- jasc開発者用イベント
+* runNow					//即時実行
+* dispatchEvent				//イベント発生時
+* createEventType			//イベントタイプ生成時
+* addPlugin					//プラグイン追加時
+* methodAddPlugin			//プラグインメソッド追加時
+* methodOverwritePlugin		//プラグインメソッド上書き時
 
 ? 自動イベント実行順
-* jasc.on("interactive")			//※実行タイミング後設定で動作しない
+* jasc.on("interactive")			//※実行タイミング後設定で、動作しない
 * document.addEventListener("DOMContentLoaded")
 	* jasc.on("imageLoadError")		//※複数実行
-	* jasc.on("DOMContentLoaded")	//※実行タイミング後設定で設定した瞬間(同期)実行
+	* jasc.on("DOMContentLoaded")	//※実行タイミング後設定で、設定した瞬間(同期)実行
 	* jasc.on("exTextLinkGet")		//※複数実行
 	* jasc.on("exLinkGet")			//※複数実行
 * window.addEventListener("load")
-	* jasc.on("load")				//※実行タイミング後設定で設定した瞬間(同期)実行
-	* jasc.on("gameInit")			//※実行タイミング後設定で動作しない
+	* jasc.on("load")				//※実行タイミング後設定で、設定した瞬間(同期)実行
+	* jasc.on("gameInit")			//※実行タイミング後設定で、動作しない
 
 */
 
@@ -481,6 +498,7 @@ class Jasc {
 		xls: ["application/msexcel", "application/vnd.ms-excel"],
 		xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 	};
+
 	//##################################################
 	// 内部使用プライベート変数
 	//##################################################
@@ -642,31 +660,52 @@ class Jasc {
 	};
 
 	#jasc_gameData = {
-		canvas: [],
-		ctx: [],
+		canvas: {},
+		ctx: {},
 	};
 
-	#jasc_events = {
+	// イベント
+	static #jasc_add_events = new Set([
 		// 基本
-		windowResize: {},
-		interactive: {},
-		DOMContentLoaded: {},
-		load: {},
+		"windowResize",
+		"interactive",
+		"DOMContentLoaded",
+		"load",
 
-		keyPress: {},
+		"keyPress",
 
 		// dom関係
-		imageLoadError: {},
-		exLinkGet: {},
-		exTextLinkGet: {},
-		changeDOM: {},
+		"imageLoadError",
+		"exLinkGet",
+		"exTextLinkGet",
+		"changeDOM",
 
 		// game関連
-		canvasResize: {},
-		gameInit: {},
-		gameRequestAnimationFrame: {},
-		gameFrameUpdate: {},
-	};
+		"canvasAdd",
+		"ctxAdd",
+		"canvasResize",
+		"gameInit",
+		"gameRequestAnimationFrame",
+		"gameFrameUpdate",
+
+		// jasc開発者用イベント
+		"runNow",
+		"dispatchEvent",
+		"createEventType",
+		"addPlugin",
+		"methodAddPlugin",
+		"methodOverwritePlugin",
+	]);
+	static #jasc_devAdd_events = new Set();
+	#jasc_events = {};
+	static #_devEventCount = 0;
+	#_activeDevEventCount = -1;
+
+	// プラグイン
+	static #plugins = {};
+	#_plugins_setting = {};
+	static #_pluginCount = 0;
+	#_activePluginCount = 0;
 
 	#jasc_readonlyData = {
 		nowFps: 0,
@@ -675,7 +714,6 @@ class Jasc {
 		pressKeySet: new Set(),
 
 		isDrawing: true,
-		isOverFrame: false,
 
 		// ゲッター群
 		get urlQuery() {
@@ -697,6 +735,11 @@ class Jasc {
 	#_fps_BBForward = 0;
 	#_fps_frame;
 	#_fps_oldFrame = 0;
+
+	// game処理使用用
+	#_activeCanvasName = null;
+	#_activeCanvas = null;
+	#_activeCtx = null;
 
 	// textNode判定用
 	_textNode_allowedTextTag = ["SPAN", "P"];
@@ -742,6 +785,10 @@ class Jasc {
 	/**
 	 * 初期設定
 	 * @param {Object} args json形式
+	 * @param {boolean} [args.isGame=false] - ゲームモードを使用するか
+	 * @param {string} [args.libPath="./jascLib/"] - ライブラリのフォルダまでのpath
+	 * @param {Object<string, boolean>} [args.useLib={}] - ライブラリを使用する場合に記述
+	 * @param {Array<string|string[]>} [args.openFuncList=["jasc.acq", "Jasc.isAssociative"]] - グローバル関数化する関数名を記述する
 	 * @returns {undefined}
 	 */
 	set initSetting(args) {
@@ -768,6 +815,11 @@ class Jasc {
 	/**
 	 * 設定
 	 * @param {Object} args json形式
+	 * @param {boolean} [args.logDebug=false] - デバッグログを出力するか
+	 * @param {number} [args.gameFps=60] - ゲームのFPS最大値を指定
+	 * @param {number} [args.BBFCapacity=30] - 1フレームの実行限界数(溢れは持ち越し)
+	 * @param {number} [args.isCanvasAutoResize=false] - canvasを自動で画面サイズに合わせてresize
+	 * @param {Object<string,HTMLCanvasElement>} [args.canvas] - 使用するcanvasを指定
 	 * @returns {undefined}
 	 */
 	set setting(args) {
@@ -786,6 +838,8 @@ class Jasc {
 		this._ccLog.time("jascLoad", true);
 		// 起動前処理
 		this.#_updateInitSettingUseLib();
+		// イベントリスナー初期化
+		this.#_eventListenerInit();
 
 		//======================
 		// イベントリスナー設置
@@ -797,12 +851,17 @@ class Jasc {
 		window.addEventListener("resize", function (e) {
 			_this._dispatchEvent("windowResize", [e]);
 			if (_this.#jasc_settingData.isCanvasAutoResize) {
-				_this.game.canvasResize();
+				jPro.game.canvasResize();
 			}
 		});
 		//* ウィンドウフォーカス
-		window.addEventListener("focus", function () {});
+		window.addEventListener("focus", function () {
+			_this.#jasc_readonlyData.pressKeySet.clear();
+		});
 		window.addEventListener("blur", function () {
+			_this.#jasc_readonlyData.pressKeySet.clear();
+		});
+		document.addEventListener("visibilitychange", function () {
 			_this.#jasc_readonlyData.pressKeySet.clear();
 		});
 		//* キー入力判定
@@ -813,7 +872,7 @@ class Jasc {
 				_this.#jasc_readonlyData.pressKeySet.delete("ShiftRight");
 			}
 			const code = e.code;
-			if (code == "") {
+			if (code == "" || code == "Backquote" || code == "KanaMode") {
 				return;
 			}
 			_this.#jasc_readonlyData.pressKeySet.add(code);
@@ -842,13 +901,13 @@ class Jasc {
 
 		//* DOMContentLoaded
 		if (document.readyState == "loading") {
-			document.addEventListener("DOMContentLoaded", this._DCL.bind(this));
+			document.addEventListener("DOMContentLoaded", this.#_DCL.bind(this));
 		} else {
 			this.#isFlags.domLoadSkip = true;
 		}
 		//* load
 		if (document.readyState != "complete") {
-			window.addEventListener("load", this._WL.bind(this));
+			window.addEventListener("load", this.#_WL.bind(this));
 		} else {
 			this.#isFlags.windowLoadSkip = true;
 		}
@@ -862,10 +921,10 @@ class Jasc {
 		setTimeout(
 			async function () {
 				if (this.#isFlags.domLoadSkip) {
-					await this._DCL();
+					await this.#_DCL();
 				}
 				if (this.#isFlags.windowLoadSkip) {
-					await this._WL();
+					await this.#_WL();
 				}
 			}.bind(this),
 			10
@@ -874,9 +933,7 @@ class Jasc {
 		// キー判定
 		const gk = function () {
 			if (!this.#jasc_initSettingData.isGame) {
-				if (this.#jasc_readonlyData.pressKeySet.size) {
-					this._dispatchEvent("keyPress", [this.#jasc_readonlyData.pressKeySet]);
-				}
+				this.#_jascAutoUpdate();
 				Jasc.requestAnimationFrame(gk);
 			}
 		}.bind(this);
@@ -888,7 +945,7 @@ class Jasc {
 	//======================
 
 	//* DOMContentLoaded
-	async _DCL(e) {
+	async #_DCL(e) {
 		this.#isFlags.domLoad = true;
 		this._ccLog.time("htmlDomLoad");
 
@@ -918,6 +975,11 @@ class Jasc {
 		}
 		this.#_updateInitSettingUseLib();
 
+		// イベントリスナー更新
+		this.#_eventListenerInit();
+		// プラグイン更新
+		this.#pluginInit();
+
 		this.#_openFuncCreate();
 
 		this._dispatchEvent("DOMContentLoaded", [e]);
@@ -926,6 +988,10 @@ class Jasc {
 		this.#_autoImageErrorGet();
 		// 外部リンク判定
 		this.#_autoExLinkGet();
+		// イベントリスナー更新
+		this.#_eventListenerInit();
+		// プラグイン更新
+		this.#pluginInit();
 
 		// 自動連携
 		this.#_autoTwitterScriptLoad();
@@ -934,14 +1000,19 @@ class Jasc {
 	}
 
 	//* load
-	async _WL(e) {
+	async #_WL(e) {
 		this.#isFlags.windowLoad = true;
 		this._ccLog.time("htmlLoad");
 		Jasc.#_touchHoverKill();
 
+		// イベントリスナー更新
+		this.#_eventListenerInit();
+		// プラグイン更新
+		this.#pluginInit();
+
 		this._dispatchEvent("load", [e]);
 
-		//jQuery存在判定
+		// jQuery存在判定
 		if (typeof jQuery == "undefined") {
 			this._ccLog.log("jQuery does not exist", "system");
 		} else {
@@ -949,15 +1020,19 @@ class Jasc {
 			this.#isFlags.jQueryLoad = true;
 		}
 
-		//isGameがonの場合canvasのupdate開始
+		// isGameがonの場合canvasのupdate開始
 		if (this.#jasc_initSettingData.isGame) {
 			this.#_gameInit();
 		}
 
-		//画像err取得
+		// 画像err取得
 		this.#_autoImageErrorGet();
-		//外部リンク判定
+		// 外部リンク判定
 		this.#_autoExLinkGet();
+		// イベントリスナー更新
+		this.#_eventListenerInit();
+		// プラグイン更新
+		this.#pluginInit();
 
 		this._ccLog.time("htmlLoad");
 		this._ccLog.time("jascLoad", true);
@@ -1013,6 +1088,10 @@ class Jasc {
 		// システムで使用しているリスト系
 		this.objDefineProperty(this.#jasc_readonlyData, "sysList", {
 			value: this.#jasc_sysListData,
+		});
+		// plugin読み出し用
+		this.objDefineProperty(this.#jasc_readonlyData, "plugins", {
+			value: this.#_plugins_setting,
 		});
 
 		//* game用
@@ -1198,12 +1277,21 @@ class Jasc {
 			const _ctxUpdate = this.#ctxUpdate.bind(this);
 			this.objDefineProperty(this.#jasc_settingData, "canvas", {
 				set(args) {
-					if (!Array.isArray(args)) {
-						_this._ccLog.log("配列以外の代入", "error");
+					if (!Jasc.isAssociative(args)) {
+						_this._ccLog.log("連想配列以外の代入", "error", true);
 						return;
 					}
 
-					jasc_gameData.canvas = args;
+					for (let key in args) {
+						if (!(args[key] instanceof HTMLCanvasElement)) {
+							_this._ccLog.log("HTMLCanvasElement以外の代入", "error");
+							continue;
+						}
+						if (!_this.#jasc_gameData.canvas[key]) {
+							_this.#jasc_gameData.canvas[key] = args[key];
+							_this._dispatchEvent("canvasAdd", [key, args[key]]);
+						}
+					}
 					_ctxUpdate();
 				},
 				get() {
@@ -1222,6 +1310,14 @@ class Jasc {
 		for (let key in this.#jascLibTree) {
 			this.#jasc_initSettingData.useLib[key] = this.#jascLibTree[key].isLoad;
 		}
+	}
+
+	#_jascAutoUpdate() {
+		if (this.#jasc_readonlyData.pressKeySet.size) {
+			this._dispatchEvent("keyPress", [this.#jasc_readonlyData.pressKeySet]);
+		}
+		this.#_eventListenerInit();
+		this.#pluginInit();
 	}
 
 	// jasc.の記述を省略しても実行出来る関数を作成
@@ -1246,32 +1342,31 @@ class Jasc {
 				this._ccLog.log(`${rename}変数(${name})が既に使用されています`, "error");
 				continue;
 			}
-			let ret = 1;
+			let func;
 			switch (spName[0]) {
 				case "jasc":
-					ret = this.#_openFuncCreateSearch(this, spName, rename, 1);
+					func = Jasc.getDotKey(this, spName.slice(1), null);
 					break;
 				case "Jasc":
 				case "JASC":
-					ret = this.#_openFuncCreateSearch(Jasc, spName, rename, 1);
+					func = Jasc.getDotKey(Jasc, spName.slice(1), null);
 					break;
 				default:
-					ret = this.#_openFuncCreateSearch(Jasc, spName, rename);
-					if (ret !== 0) {
-						ret = this.#_openFuncCreateSearch(this, spName, rename);
+					func = Jasc.getDotKey(Jasc, spName, null);
+					if (!func) {
+						func = Jasc.getDotKey(this, spName, null);
 					}
 					break;
 			}
-			switch (ret) {
-				case 0:
+			if (func) {
+				if (typeof func === "function") {
+					window[rename] = func;
 					this._ccLog.log(`${rename}変数(${name})を作成しました`, "pale");
-					break;
-				case 1:
-					this._ccLog.log(`${name}関数(class)は存在しません`, "error");
-					break;
-				case 2:
+				} else {
 					this._ccLog.log(`${name}は関数(class)ではありません！`, "error");
-					break;
+				}
+			} else {
+				this._ccLog.log(`${name}関数(class)は存在しません`, "error");
 			}
 		}
 	}
@@ -1398,6 +1493,118 @@ class Jasc {
 		});
 	}
 
+	// jascイベントリスナーの初期化
+	#_eventListenerInit() {
+		if (Jasc.#_devEventCount === this.#_activeDevEventCount) {
+			return;
+		}
+		// 初期化
+		if (this.#_activeDevEventCount === -1) {
+			for (let key of Jasc.#jasc_add_events) {
+				if (!this.#jasc_events[key]) {
+					this.#jasc_events[key] = {};
+				}
+			}
+		}
+		this.#_activeDevEventCount = Jasc.#_devEventCount;
+
+		// 新規を登録
+		for (let key of Jasc.#jasc_devAdd_events) {
+			let k = "_" + key;
+			if (!this.#jasc_events[k]) {
+				this.#jasc_events[k] = {};
+				this._ccLog.log(`Jasc eventListener add: "${k}"`, "pale");
+				this._dispatchEvent("createEventType", [k]);
+			}
+		}
+	}
+
+	// プラグインの初期化
+	#pluginInit() {
+		if (Jasc.#_pluginCount === this.#_activePluginCount) {
+			return;
+		}
+		this.#_activePluginCount = Jasc.#_pluginCount;
+		for (let key in Jasc.#plugins) {
+			if (this.#_plugins_setting[key]) {
+				continue;
+			}
+			const { func, opt, name } = Jasc.#plugins[key];
+			const obj = {
+				func: func.bind(this),
+				event: {},
+			};
+			this.#_plugins_setting[key] = obj;
+
+			this._dispatchEvent("addPlugin", [key, name]);
+
+			// イベント登録
+			if (opt.eventTypes) {
+				let evTypes = opt.eventTypes;
+				if (typeof evTypes == "string") {
+					evTypes = [evTypes];
+				}
+				if (Array.isArray(evTypes)) {
+					for (let i = 0, li = evTypes.length; i < li; i++) {
+						let evT = evTypes[i];
+						if (obj.event[evT]) {
+							this._ccLog.warn(`(${key})${evT}イベントタイプのリスナーはすでに登録されています`, true);
+							continue;
+						}
+						obj.event[evT] = this.addEventListener(evT, obj.func, key, true);
+					}
+				} else {
+					this._ccLog.error("イベントタイプは文字型の配列です", true);
+				}
+			}
+
+			// jascインスタンスに登録
+			let n;
+			if (opt.overwrite) {
+				n = name;
+			} else {
+				n = key;
+			}
+			if (opt.jascJoin) {
+				let w = 1;
+				let n = "";
+				if (opt.overwrite) {
+					n = name;
+					w = 2;
+				} else {
+					n = key;
+				}
+				let base = Jasc.getDotKey(this, n, "", true);
+				w *= !!base;
+				if (w != 1) {
+					let p = n.split(".");
+					let par, t;
+					if (p.length > 1) {
+						t = p.pop();
+						par = Jasc.getDotKey(this, p.join("."));
+					} else {
+						t = n;
+						par = this;
+					}
+					par[t] = obj.func.bind(this);
+				}
+				switch (w) {
+					case 0:
+						this._ccLog.log(`プラグイン(jasc.${n})を登録しました`, "pale");
+						this._dispatchEvent("methodAddPlugin", [key, n]);
+						break;
+					case 1:
+						this._ccLog.warn(`(jasc.${n})は既に使用されています！`, true);
+						break;
+					case 2:
+						this._ccLog.log(`プラグイン${key}が関数(jasc.${n})を上書きしました`, "pale");
+						this._dispatchEvent("methodOverwritePlugin", [key, n]);
+						break;
+				}
+			}
+		}
+	}
+
 	// スマホでは:hoverではなく:active
 	static #_touchHoverKill() {
 		var touch = "ontouchstart" in document.documentElement || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0;
@@ -1493,7 +1700,7 @@ class Jasc {
 				continue;
 			}
 			elem.classList.add("jascExLinkGetter");
-			if (this.isExternalLink(elem)) {
+			if (jPro.isExternalLink(elem)) {
 				// 別ウィンドウに飛ばす
 				if (!elem?.target || elem.target != "_self") {
 					elem.target = "_blank";
@@ -1506,7 +1713,7 @@ class Jasc {
 				}
 				elem.classList.add("jascExLink");
 				// テキストの場合のみ
-				if (this.isTextNode(elem)) {
+				if (jPro.isTextNode(elem)) {
 					elem.classList.add("jascExTextLink");
 					this._dispatchEvent("exTextLinkGet", [elem]);
 				}
@@ -1544,7 +1751,6 @@ class Jasc {
 				if (this.#_fps_BBForward > 50) {
 					this.#_fps_BBForward = 50;
 				}
-				this.#jasc_readonlyData.isOverFrame = this.#_fps_BBForward > 20;
 			} else {
 				this.#_fps_BBForward = 0;
 			}
@@ -1577,11 +1783,9 @@ class Jasc {
 	}.bind(this);
 
 	#gameFrameUpdate() {
-		if (this.#jasc_readonlyData.pressKeySet.size) {
-			this._dispatchEvent("keyPress", [this.#jasc_readonlyData.pressKeySet]);
-		}
+		this.#_jascAutoUpdate();
 
-		this._dispatchEvent("gameFrameUpdate", [this.#jasc_readonlyData.isDrawing, this.#jasc_readonlyData.isOverFrame]);
+		this._dispatchEvent("gameFrameUpdate", [this.#jasc_readonlyData.isDrawing]);
 
 		return;
 	}
@@ -1591,11 +1795,19 @@ class Jasc {
 	//======================
 
 	#ctxUpdate() {
-		this.#jasc_gameData.ctx = [];
-		for (let i = 0; i < this.#jasc_gameData.canvas.length; i++) {
-			this.#jasc_gameData.ctx[i] = this.#jasc_gameData.canvas[i].getContext("2d");
+		for (let key in this.#jasc_gameData.canvas) {
+			if (!this.#jasc_gameData.ctx[key]) {
+				let ctx = this.#jasc_gameData.canvas[key].getContext("2d");
+				this.#jasc_gameData.ctx[key] = ctx;
+				if (this.#_activeCanvasName === null) {
+					this.game.changeCurrentCanvas(key);
+				}
+				this._dispatchEvent("ctxAdd", [key, ctx]);
+			}
 		}
-		this.game.canvasResize();
+		if (this.#jasc_settingData.isCanvasAutoResize) {
+			this.game.canvasResize();
+		}
 	}
 
 	//##################################################
@@ -1611,32 +1823,51 @@ class Jasc {
 	 * @param {string} [eventType=""] - イベントの種類
 	 * @param {function} [callback] - イベントのコールバック関数
 	 * @param {string} [name=auto] - 削除時の参照用名称
-	 * @returns {-1|0|1|string[]} -1:イベント登録成功(即時実行) 0:イベント登録成功 1:イベント登録失敗
+	 * @param {boolean} [returnName=false] - 登録した名称を返すか
+	 * @returns {-1|0|1|string|string[]} -1:イベント登録成功(即時実行) 0:イベント登録成功 1:イベント登録失敗
 	 */
-	addEventListener = function (eventType = "", callback, name = "") {
-		if (eventType == "type") {
+	addEventListener = function (eventType = "", callback, name = "", returnName = false) {
+		if (eventType === "type") {
 			return ["type", ...Object.keys(this.#jasc_events)];
 		}
 		if (Jasc.objHasOwnProperty(this.#jasc_events, eventType)[0]) {
 			if (callback && typeof callback == "function") {
-				if (name == "") {
-					name = this.setAssociativeAutoName(this.#jasc_events[eventType], callback, "__jasc");
+				if (name === "") {
+					name = Jasc.setAssociativeAutoName(this.#jasc_events[eventType], callback, "__jasc");
 				} else {
 					this.#jasc_events[eventType][name] = callback;
 				}
 
 				// 旬を逃しても一応実行はさせる
-				if ((eventType == "DOMContentLoaded" && this.#isFlags.domLoad) || (eventType == "load" && this.#isFlags.windowLoad)) {
+				if ((eventType === "DOMContentLoaded" && this.#isFlags.domLoad) || (eventType === "load" && this.#isFlags.windowLoad) || eventType === "runNow") {
 					callback(null);
+					if (returnName) {
+						return name;
+					}
 					return -1;
+				}
+				if (returnName) {
+					return name;
 				}
 				return 0;
 			} else if (callback == null) {
 				return this.#jasc_events[eventType];
 			}
 		}
-		return 1;
+		if (eventType.startsWith("_")) {
+			return 1;
+		}
+		return this.addEventListener("_" + eventType, callback, name, returnName);
 	}.bind(this);
+	/**
+	 * 疑似イベントリスナー
+	 * @param {string} [eventType=""] - イベントの種類
+	 * @param {function} [callback] - イベントのコールバック関数
+	 * @param {string} [name=auto] - 削除時の参照用名称
+	 * @param {boolean} [returnName=false] - 登録した名称を返すか
+	 * @returns {-1|0|1|string|string[]} -1:イベント登録成功(即時実行) 0:イベント登録成功 1:イベント登録失敗
+	 */
+	on = this.addEventListener;
 
 	/**
 	 * 疑似イベントリスナーの削除
@@ -1657,7 +1888,7 @@ class Jasc {
 			return list;
 		}
 		if (Jasc.objHasOwnProperty(this.#jasc_events, eventType)[0]) {
-			if (Jasc.isAssociative(this.#jasc_events?.[eventType])) {
+			if (jPro.isAssociative(this.#jasc_events?.[eventType])) {
 				if (name != "") {
 					if (typeof this.#jasc_events?.[eventType]?.[name] != "function") {
 						return 2;
@@ -1671,10 +1902,17 @@ class Jasc {
 			}
 			return 2;
 		}
-		return 1;
+		if (eventType.startsWith("_")) {
+			return 1;
+		}
+		return this.removeEventListener("_" + eventType, name);
 	}.bind(this);
-
-	on = this.addEventListener;
+	/**
+	 * 疑似イベントリスナーの削除
+	 * @param {string} [eventType=""] - イベントの種類
+	 * @param {string} [name] - 削除時の参照用名称
+	 * @returns {0|1|2|string[]} 0:イベント削除成功 1:イベント削除失敗 2:イベント削除失敗(無効なイベント名)
+	 */
 	off = this.removeEventListener;
 
 	/**
@@ -1684,8 +1922,14 @@ class Jasc {
 	 * @returns {number} - 発火したイベント数
 	 */
 	_dispatchEvent(eventType = "", args = []) {
-		if (!Jasc.isAssociative(this.#jasc_events?.[eventType])) {
+		if (eventType === "runNow") {
 			return -1;
+		}
+		if (!Jasc.isAssociative(this.#jasc_events?.[eventType])) {
+			eventType = "_" + eventType;
+			if (!Jasc.isAssociative(this.#jasc_events?.[eventType])) {
+				return -1;
+			}
 		}
 		const e = this.#jasc_events[eventType];
 		let c = 0;
@@ -1699,12 +1943,189 @@ class Jasc {
 				}
 			}
 		}
+		if (eventType !== "dispatchEvent") {
+			this._dispatchEvent("dispatchEvent", [eventType, args, c]);
+		}
 		return c;
 	}
+
+	/**
+	 * jasc改造機能
+	 * @static
+	 */
+	static develop = {
+		/**
+		 * jascイベントリスナの種類を追加
+		 * @param {string} name - イベント名
+		 * @returns {0|1} 実行結果
+		 */
+		createEvent(name) {
+			if (typeof name != "string") {
+				return 1;
+			}
+			name = name.replace(/^_+/, "");
+
+			if (name === "type" || Jasc.#jasc_add_events.has(name) || Jasc.#jasc_devAdd_events.has(name)) {
+				return 1;
+			}
+			Jasc.#jasc_devAdd_events.add(name);
+			Jasc.#_devEventCount++;
+			return 0;
+		},
+
+		/**
+		 * プラグインの登録
+		 * @param {function} plugin - プラグイン
+		 * @param {string} [name=""] - プラグイン名
+		 * @param {object} [opt] - オプション
+		 * @param {string|string[]} [opt.eventTypes] - プラグイン実行イベントタイプ
+		 * @param {boolean} [opt.jascClassJoin] - プラグインをjascクラスに登録するか
+		 * @param {boolean} [opt.jascJoin] - プラグインをjascインスタンスに登録するか
+		 * @param {boolean} [opt.overwrite] - 登録インスタンス、クラスを上書きするか
+		 * @returns {string|false} 登録プラグイン名
+		 * @static
+		 */
+		addPlugins(plugin, name = "", opt = {}) {
+			if (typeof plugin != "function") {
+				return false;
+			}
+
+			const obj = {
+				func: plugin,
+				opt: opt,
+			};
+
+			// 名称自動設定
+			let nopName = name.replace(/\./g, "_");
+			if (name) {
+				obj.name = name;
+				if (Jasc.#plugins[nopName]) {
+					nopName = Jasc.setAssociativeAutoName(Jasc.#plugins, obj, nopName, "_");
+				} else {
+					Jasc.#plugins[nopName] = obj;
+				}
+			} else {
+				name = Jasc.setAssociativeAutoName(Jasc.#plugins, obj, "__plugin", "_");
+				obj.name = name;
+			}
+
+			// 登録通知
+			Jasc.#_pluginCount++;
+
+			// jascクラスに登録
+			if (opt.jascClassJoin) {
+				let w = 1;
+				let n = "";
+				if (opt.overwrite) {
+					n = obj.name;
+					w = 2;
+				} else {
+					n = name;
+				}
+				let base = Jasc.getDotKey(Jasc, n, "", true);
+				w *= !!base;
+				if (w != 1) {
+					let p = n.split(".");
+					let par, t;
+					if (p.length > 1) {
+						t = p.pop();
+						par = Jasc.getDotKey(Jasc, p.join("."));
+					} else {
+						t = n;
+						par = Jasc;
+					}
+					par[t] = obj.func.bind(Jasc);
+				}
+				switch (w) {
+					case 0:
+						console.log(`%c[Jasc]プラグイン(Jasc.${n})を登録しました`, "color: #bbb;");
+						break;
+					case 1:
+						console.warn(`(Jasc.${n})は既に使用されています！`);
+						break;
+					case 2:
+						console.log(`%c[Jasc]プラグイン${name}が関数(Jasc.${n})を上書きしました`, "color: #bbb;");
+						break;
+				}
+			}
+
+			return name;
+		},
+
+		/**
+		 * プラグインが適用されているか
+		 * @param {string} name - プラグイン名
+		 * @returns {boolean} プラグインが適用されているか
+		 */
+		hasPlugins(name) {
+			return !!Jasc.#plugins[name];
+		},
+	};
 
 	//======================
 	// 基本構成(DOM)
 	//======================
+
+	/**
+	 * DOM取得(jQuery非対応版)
+	 * @param {string} [str] - 取得対象
+	 * @param {Window|Document|HTMLElement} [par=document] - 取得対象の親
+	 * @returns {Window|Document|HTMLElement|HTMLElement[]}
+	 * @static
+	 */
+	static acq(str, par = document) {
+		if (!str) {
+			return window;
+		}
+		// 文字列以外は返却
+		if (typeof str != "string") {
+			return str;
+		}
+		switch (str) {
+			case "window":
+				return window;
+			case "document":
+				return document;
+		}
+		str = str.trim();
+		let elem = [];
+		if (par === window) {
+			par = document;
+		}
+		if (par instanceof HTMLElement || par.nodeType >= 1) {
+			par = [par];
+		}
+		let notArr = false;
+
+		let chStr = str.slice(0, 1);
+		let queryStr;
+		if (chStr != "!" && Jasc.#_ACQ_REGEXP.test(str)) {
+			chStr = "!";
+			queryStr = str;
+		} else {
+			queryStr = str.slice(1);
+		}
+		par.forEach((p) => {
+			switch (chStr) {
+				case "#":
+					elem.push(p.getElementById(queryStr));
+					notArr = true;
+					break;
+				case ".":
+					elem.push(...p.getElementsByClassName(queryStr));
+					break;
+				case "!":
+					elem.push(...p.querySelectorAll(queryStr));
+					break;
+				default:
+					elem.push(...p.getElementsByTagName(str));
+			}
+		});
+		if (notArr && elem.length <= 1) {
+			elem = elem[0];
+		}
+		return elem;
+	}
 
 	/**
 	 * DOM取得
@@ -1718,7 +2139,7 @@ class Jasc {
 		}
 		// 文字列以外は返却
 		if (typeof str != "string") {
-			return str;
+			return this.jQueryObjToDOM(str);
 		}
 		switch (str) {
 			case "window":
@@ -1780,15 +2201,40 @@ class Jasc {
 			try {
 				return obj.get();
 			} catch (e) {
-				ccLog.warn(e, true);
+				this._ccLog.warn(e, true);
 			}
 			return obj;
 		}
 		return obj;
 	}.bind(this);
+
+	/**
+	 * classを反転(jQuery非対応版)
+	 * @param {string|HTMLElement|HTMLElement[]} name - class反転対象
+	 * @param {string} str - class名
+	 * @returns {undefined}
+	 * @static
+	 */
+	static toggleClass(name, str) {
+		let elem;
+		if (typeof name == "string") {
+			elem = this.acq(name);
+		} else {
+			elem = name;
+		}
+		if (elem != null) {
+			if (elem instanceof HTMLElement) {
+				elem.classList.toggle(str);
+			} else {
+				for (let e of elem) {
+					e.classList.toggle(str);
+				}
+			}
+		}
+	}
 	/**
 	 * classを反転
-	 * @param {jQuery|string|HTMLElement|HTMLElement[]} name - class反転対象
+	 * @param {string|jQuery|HTMLElement|HTMLElement[]} name - class反転対象
 	 * @param {string} str - class名
 	 * @returns {undefined}
 	 */
@@ -1903,7 +2349,7 @@ class Jasc {
 	getScrollVerticalPosition = Jasc.getScrollVerticalPosition;
 
 	/**
-	 * ファイル動的読み込み(旧バージョン)
+	 * ファイル動的読み込み
 	 * @param {string} src - ファイルurl
 	 * @param {function} [callback] - 完了時コールバック
 	 * @param {Object} [opt] - オプション
@@ -2148,7 +2594,7 @@ class Jasc {
 							d = JSON.stringify(data[k]);
 							tmp += "&" + k + "=" + d;
 						} catch (e) {
-							ccLog.error(e);
+							this._ccLog.error(e);
 						}
 					} else {
 						tmp += "&" + k + "=" + encodeURIComponent(data[k]);
@@ -2177,7 +2623,7 @@ class Jasc {
 		// 処理開始
 		let xhr = new XMLHttpRequest();
 		if (xhr == null) {
-			ccLog.error("XMLHttpRequest is not supported.");
+			this._ccLog.error("XMLHttpRequest is not supported.");
 			return;
 		}
 		if (type == "GET") {
@@ -2191,6 +2637,7 @@ class Jasc {
 
 		// Event
 		xhr.onload = function (event) {
+			xhr.onload = xhr.onerror = xhr.ontimeout = null;
 			if (xhr.readyState === 4) {
 				if (xhr.status === 200) {
 					success(xhr.response, dataType);
@@ -2201,7 +2648,13 @@ class Jasc {
 			}
 		};
 		xhr.onerror = function (event) {
+			xhr.onload = xhr.onerror = xhr.ontimeout = null;
 			error(xhr, event.target.response.message, event);
+			complete(xhr, xhr.responseType);
+		};
+		xhr.ontimeout = function (event) {
+			xhr.onload = xhr.onerror = xhr.ontimeout = null;
+			error(xhr, "timeout", event);
 			complete(xhr, xhr.responseType);
 		};
 
@@ -2423,14 +2876,14 @@ class Jasc {
 
 	/**
 	 * canvas描画関係
-	 * @static
 	 */
-	static draw = {
+	draw = {
 		/**
 		 * 文字描画
+		 *
+		 * ※ctxにnullを代入するとカレントctxが使用されます。
 		 * @param {CanvasRenderingContext2D} ctx - 描画コンテキスト
-		 * @param {number} x - x座標
-		 * @param {number} y - y座標
+		 * @param {number[]} xy - xy座標
 		 * @param {string} text - 描画する文字
 		 * @param {number} size - 文字サイズ
 		 * @param {string} color - 文字色
@@ -2438,88 +2891,99 @@ class Jasc {
 		 * @param {string} [base="middle"] - 文字描画位置
 		 * @returns {undefined}
 		 */
-		text(ctx, x, y, text, size, color, align = "center", base = "middle") {
+		text: function (ctx, xy, text, size, color, align = "center", base = "middle") {
+			if (ctx == null) {
+				ctx = this.#_activeCtx;
+			}
 			ctx.font = "bold " + size + 'px "太ゴシック","Arial Black"';
 			ctx.textAlign = align;
 			ctx.textBaseline = base;
 			ctx.fillStyle = color;
-			ctx.fillText(text, x, y);
-		},
+			ctx.fillText(text, ...xy);
+		}.bind(this),
 		/**
 		 * 線描画
+		 *
+		 * ※ctxにnullを代入するとカレントctxが使用されます。
 		 * @param {CanvasRenderingContext2D} ctx - 描画コンテキスト
-		 * @param {number} x1 - x1
-		 * @param {number} y1 - y1
-		 * @param {number} x2 - x2
-		 * @param {number} y2 - y2
+		 * @param {number[]} xy1 - xy1
+		 * @param {number[]} xy2 - xy2
 		 * @param {string} color - 線色
 		 * @returns {undefined}
 		 */
-		line(ctx, x1, y1, x2, y2, color) {
+		line: function (ctx, xy1, xy2, color) {
+			if (ctx == null) {
+				ctx = this.#_activeCtx;
+			}
 			ctx.strokeStyle = color;
 			ctx.beginPath();
-			ctx.moveTo(x1, y1);
-			ctx.lineTo(x2, y2);
+			ctx.moveTo(...xy1);
+			ctx.lineTo(...xy2);
 			ctx.stroke();
-		},
+		}.bind(this),
 
 		/**
 		 * 四角描画
+		 *
+		 * ※ctxにnullを代入するとカレントctxが使用されます。
 		 * @param {CanvasRenderingContext2D} ctx - 描画コンテキスト
-		 * @param {number} x - x座標
-		 * @param {number} y - y座標
-		 * @param {number} w - 幅
-		 * @param {number} h - 高さ
+		 * @param {number[]} xy - xy座標
+		 * @param {number[]} wh - 幅・高さ
 		 * @param {string} color - 色
 		 */
-		rect(ctx, x, y, w, h, color) {
+		rect: function (ctx, xy, wh, color) {
+			if (ctx == null) {
+				ctx = this.#_activeCtx;
+			}
 			ctx.fillStyle = color;
-			ctx.fillRect(x, y, w, h);
-		},
+			ctx.fillRect(...xy, ...wh);
+		}.bind(this),
 		/**
 		 * 円描画
+		 *
+		 * ※ctxにnullを代入するとカレントctxが使用されます。
 		 * @param {CanvasRenderingContext2D} ctx - 描画コンテキスト
-		 * @param {number} x - x座標
-		 * @param {number} y - y座標
+		 * @param {number[]} xy - x座標
 		 * @param {number} r - 半径
 		 * @param {string} color1 - 塗り
 		 * @param {string} color2 - 線
 		 * @returns {undefined}
 		 */
-		circle(ctx, x, y, r, color1, color2 = null) {
+		circle: function (ctx, xy, r, color1, color2 = null) {
+			if (ctx == null) {
+				ctx = this.#_activeCtx;
+			}
 			ctx.fillStyle = color1;
 			ctx.strokeStyle = color2;
 			ctx.beginPath();
-			ctx.arc(x, y, r, 0, Math.PI * 2);
+			ctx.arc(...xy, r, 0, Math.PI * 2);
 			if (color2 != null) ctx.stroke();
 			if (color1 != null) ctx.fill();
-		},
+		}.bind(this),
 		/**
 		 * 三角描画
+		 *
+		 * ※ctxにnullを代入するとカレントctxが使用されます。
 		 * @param {CanvasRenderingContext2D} ctx - 描画コンテキスト
-		 * @param {number} x1 - x1
-		 * @param {number} y1 - y1
-		 * @param {number} x2 - x2
-		 * @param {number} y2 - y2
-		 * @param {number} x3 - x3
-		 * @param {number} y3 - y3
+		 * @param {number[]} xy1 - x1
+		 * @param {number[]} xy2 - x2
+		 * @param {number[]} xy3 - x3
 		 * @param {string} color - 色
 		 * @returns {undefined}
 		 */
-		triangle(ctx, x1, y1, x2, y2, x3, y3, color) {
+		triangle: function (ctx, xy1, xy2, xy3, color) {
+			if (ctx == null) {
+				ctx = this.#_activeCtx;
+			}
 			ctx.fillStyle = color;
 			ctx.beginPath();
-			ctx.moveTo(x1, y1);
-			ctx.lineTo(x2, y2);
-			ctx.lineTo(x3, y3);
+			ctx.moveTo(...xy1);
+			ctx.lineTo(...xy2);
+			ctx.lineTo(...xy3);
 			ctx.closePath();
 			ctx.fill();
-		},
+		}.bind(this),
 	};
-	/**
-	 * canvas描画関係
-	 */
-	draw = Jasc.draw;
 
 	//======================
 	// game外部操作
@@ -2527,13 +2991,41 @@ class Jasc {
 
 	/**
 	 * jascゲームエンジン関係
-	 * @static
 	 */
 	game = {
 		/**
-		 * this共有用
+		 * 現在のカレントキャンバスの管理
+		 * @param {string} [key=""] キー
+		 * @returns {string} 現在のキー
 		 */
-		_this: this,
+		changeCurrentCanvas: function (key = "") {
+			if (!key) {
+				return this.#_activeCanvasName;
+			}
+			if (!this.#jasc_gameData.canvas[key]) {
+				return false;
+			}
+			this.#_activeCanvasName = key;
+			this.#_activeCanvas = this.#jasc_gameData.canvas[key];
+			this.#_activeCtx = this.#jasc_gameData.ctx[key];
+			return key;
+		}.bind(this),
+
+		/**
+		 * カレントキャンバスを取得
+		 * @returns {HTMLCanvasElement} キャンバスオブジェクト
+		 */
+		getCurrentCanvas: function () {
+			return this.#_activeCanvas;
+		}.bind(this),
+
+		/**
+		 * カレントctxを取得
+		 * @returns {CanvasRenderingContext2D} ctxオブジェクト
+		 */
+		getCurrentCtx: function () {
+			return this.#_activeCtx;
+		}.bind(this),
 
 		/**
 		 * canvasリサイズ
@@ -2541,9 +3033,9 @@ class Jasc {
 		 * @param {number} [height=0] 高さ
 		 * @returns {undefined}
 		 */
-		canvasResize(width = 0, height = 0) {
-			let li = this._this.#jasc_gameData.canvas.length;
-			if (li <= 0) {
+		canvasResize: function (width = 0, height = 0) {
+			const _jasc_gameData = this.#jasc_gameData;
+			if (Object.keys(_jasc_gameData.canvas).length <= 0) {
 				return;
 			}
 
@@ -2553,19 +3045,18 @@ class Jasc {
 				let rect = document.body.getBoundingClientRect();
 				[width, height] = [rect.width, rect.height];
 			}
+			for (let key in _jasc_gameData.canvas) {
+				_jasc_gameData.canvas[key].width = width * dpr;
+				_jasc_gameData.canvas[key].height = height * dpr;
 
-			for (let i = 0; i < li; i++) {
-				jasc_gameData.canvas[i].width = width * dpr;
-				jasc_gameData.canvas[i].height = height * dpr;
+				_jasc_gameData.ctx[key].scale(dpr, dpr);
 
-				jasc_gameData.ctx[i].scale(dpr, dpr);
-
-				jasc_gameData.canvas[i].style.width = width + "px";
-				jasc_gameData.canvas[i].style.height = height + "px";
+				_jasc_gameData.canvas[key].style.width = width + "px";
+				_jasc_gameData.canvas[key].style.height = height + "px";
 			}
 
-			this._this._dispatchEvent("canvasResize", [width, height, dpr]);
-		},
+			this._dispatchEvent("canvasResize", [width, height, dpr]);
+		}.bind(this),
 	};
 
 	//======================
@@ -2598,7 +3089,7 @@ class Jasc {
 	static overwriteAssociative(parents, child = {}) {
 		for (let key in parents) {
 			if (Jasc.objHasOwnProperty(child, key)[0]) {
-				if (Jasc.isAssociative(parents[key])) {
+				if (Jasc.isAssociative(parents[key]) && !Jasc.isSetter(parents, key)) {
 					Jasc.overwriteAssociative(parents[key], child[key]);
 				} else {
 					parents[key] = child[key];
@@ -2621,25 +3112,93 @@ class Jasc {
 	 * @param {string} [baseName=""] - 基準名
 	 * @param {string} [prefix="-"] - 通し番号結合文字
 	 * @returns {string} 作成されたkey名
+	 * @static
 	 */
-	setAssociativeAutoName(obj = {}, data = null, baseName = "", prefix = "-") {
+	static setAssociativeAutoName(obj = {}, data = null, baseName = "", prefix = "-") {
 		if (!Jasc.isAssociative(obj)) {
-			this._ccLog.error("setAssociativeAutoNameError:引数1が連想配列ではありません");
-			return null;
+			return false;
 		}
 		let maxNum = -1;
 		for (let key in obj) {
 			if (Jasc.objHasOwnProperty(obj, key)[0]) {
 				let sp = key.split(prefix);
-				if (sp.length == 2 && sp[0] == baseName) {
-					maxNum = Math.max(maxNum, +sp[1]);
+				let spl = sp.length;
+				if (spl >= 2) {
+					maxNum = Math.max(maxNum, +sp[spl - 1]);
 				}
 			}
 		}
+
+		let bn = baseName;
+		if (baseName.indexOf(prefix) >= 0) {
+			let tmp = baseName.split(prefix);
+			if (!isNaN(tmp[tmp.length - 1])) {
+				bn = tmp.slice(0, -1).join(prefix);
+			}
+		}
+
 		maxNum++;
-		const keyName = `${baseName}${prefix}${maxNum}`;
+		const keyName = `${bn}${prefix}${maxNum}`;
 		obj[keyName] = data;
 		return keyName;
+	}
+	/**
+	 * 連想配列に自動でkeyを作成、割り当て
+	 * @param {object} obj - 連想配列
+	 * @param {any} [data] - 代入内容
+	 * @param {string} [baseName=""] - 基準名
+	 * @param {string} [prefix="-"] - 通し番号結合文字
+	 * @returns {string} 作成されたkey名
+	 */
+	setAssociativeAutoName = Jasc.setAssociativeAutoName;
+
+	/**
+	 * オブジェクトの断層を特定
+	 *
+	 * 例:
+	 * "obj.a.b.c" => c
+	 * @param {object} obj - オブジェクト
+	 * @param {string|string[]} keys - キー
+	 * @param {any} [notFound="__NOT_FOUND__"] - 存在しない場合やエラーの返り値
+	 * @param {boolean} [createObj=false] - 存在しなかった場合にオブジェクトを作成
+	 * @returns {any} 値
+	 * @static
+	 */
+	static getDotKey(obj, keys, notFound = "__NOT_FOUND__", createObj = false) {
+		if (typeof keys === "string") {
+			keys = keys.split(".");
+		} else if (Array.isArray(keys)) {
+			keys = keys.slice();
+		} else {
+			return notFound;
+		}
+		return Jasc._getDotSearch(obj, keys, notFound, createObj);
+	}
+	/**
+	 * オブジェクトの断層を特定
+	 *
+	 * 例:
+	 * "obj.a.b.c" => c
+	 * @param {object} obj - オブジェクト
+	 * @param {string|string[]} keys - キー
+	 * @param {any} [notFound="__NOT_FOUND__"] - 存在しない場合やエラーの返り値
+	 * @param {boolean} [createObj=false] - 存在しなかった場合にオブジェクトを作成
+	 * @returns {any} 値
+	 */
+	getDotKey = Jasc.getDotKey;
+
+	static _getDotSearch(obj, keys, notFound, createObj = false) {
+		const key = keys.shift();
+		if (keys.length === 0) {
+			return obj[key];
+		}
+		if (obj[key] === undefined) {
+			if (!createObj) {
+				return notFound;
+			}
+			obj[key] = {};
+		}
+		return Jasc._getDotSearch(obj[key], keys, notFound, createObj);
 	}
 
 	//======================
@@ -2885,50 +3444,6 @@ class Jasc {
 	formatDate = Jasc.formatDate;
 
 	/**
-	 * formatTime(時間単位を日本語に)
-	 * @param {number} ti - 時間(ms)
-	 * @returns {string} フォーマット結果
-	 * @static
-	 */
-	static formatTime(ti) {
-		ti = (ti / 1000) | 0;
-		let y = (ti / 60 / 60 / 24 / 30 / 12) | 0;
-		let mo = ((ti / 60 / 60 / 24 / 30) | 0) % 12;
-		let d = ((ti / 60 / 60 / 24) | 0) % 30;
-		let h = ((ti / 60 / 60) | 0) % 24;
-		let mi = ((ti / 60) | 0) % 60;
-		let s = ti % 60;
-
-		let ans = "";
-		if (y) {
-			ans += `${y}年`;
-		}
-		if (mo) {
-			ans += `${mo}ヶ月`;
-		}
-		if (d) {
-			ans += `${d}日`;
-		}
-		if (h) {
-			ans += `${h}時間`;
-		}
-		if (mi) {
-			ans += `${mi}分`;
-		}
-		if (s) {
-			ans += `${s}秒`;
-		}
-
-		return ans;
-	}
-	/**
-	 * formatTime(時間単位を日本語に)
-	 * @param {number} ti - 時間(ms)
-	 * @returns {string} フォーマット結果
-	 */
-	formatTime = Jasc.formatTime;
-
-	/**
 	 * 組み合わせ列挙
 	 * @param {array} arr - 配列
 	 * @param {number} [number=0] - 組み合わせ数
@@ -2997,6 +3512,50 @@ class Jasc {
 	 * @returns {boolean} 数値かどうか
 	 */
 	isNumber = Jasc.isNumber;
+
+	/**
+	 * 数値変換
+	 * @param {any} n - 数値に変換する
+	 * @param {boolean} [noNaN=false] - NaNを0にするか
+	 * @returns {number} 数値
+	 * @static
+	 */
+	static toNumber(n, noNaN = false) {
+		let num;
+		switch (typeof n) {
+			case "number":
+				num = n;
+				break;
+			case "bigint":
+			case "string":
+			case "boolean":
+				num = Number(n);
+				break;
+			case "object":
+				if (n instanceof Number) {
+					num = +n;
+					break;
+				} else if (n === null) {
+					num = 0;
+					break;
+				}
+				num = NaN;
+				break;
+			default:
+				num = NaN;
+		}
+		if (noNaN && isNaN(num)) {
+			return 0;
+		}
+		return num;
+	}
+	/**
+	 * 数値変換
+	 * @param {any} n - 数値に変換する
+	 * @param {boolean} [noNaN=false] - NaNを0にするか
+	 * @returns {number} 数値
+	 */
+	toNumber = Jasc.toNumber;
 
 	/**
 	 * Arduinoのmapの移植
@@ -3510,7 +4069,7 @@ class Jasc {
 	setCookie = Jasc.setCookie;
 
 	//======================
-	// 標準関数を使いやすく
+	// オブジェクト操作
 	//======================
 	/**
 	 * replaceのPromises対応版
@@ -3641,7 +4200,48 @@ class Jasc {
 	 */
 	objHasOwnProperty = Jasc.objHasOwnProperty;
 
-	// 既存ではないけどある意味あったら便利
+	/**
+	 * メゾットがセッターかを判定
+	 * @param {object} obj - オブジェクト
+	 * @param {string} key - 名前
+	 * @returns {boolean} 結果
+	 * @static
+	 */
+	static isSetter(obj, key) {
+		const descriptor = Object.getOwnPropertyDescriptor(obj, key);
+		return !!descriptor && typeof descriptor.set === "function";
+	}
+	/**
+	 * メゾットがセッターかを判定
+	 * @param {object} obj - オブジェクト
+	 * @param {string} key - 名前
+	 * @returns {boolean} 結果
+	 */
+	isSetter = Jasc.isSetter;
+
+	/**
+	 * メゾットがゲッターかを判定
+	 * @param {object} obj - オブジェクト
+	 * @param {string} key - 名前
+	 * @returns {boolean} 結果
+	 * @static
+	 */
+	static isGetter(obj, key) {
+		const descriptor = Object.getOwnPropertyDescriptor(obj, key);
+		return !!descriptor && typeof descriptor.get === "function";
+	}
+	/**
+	 * メゾットがゲッターかを判定
+	 * @param {object} obj - オブジェクト
+	 * @param {string} key - 名前
+	 * @returns {boolean} 結果
+	 */
+	isGetter = Jasc.isGetter;
+
+	//======================
+	// 標準関数を使いやすく
+	//======================
+
 	/**
 	 * コード側でキー入力
 	 * @param {string|string[]} code - キーコード
