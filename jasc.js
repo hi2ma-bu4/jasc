@@ -1,4 +1,4 @@
-// jasc.js Ver.1.13.5
+// jasc.js Ver.1.13.6
 
 /*
 ! ！！注意！！
@@ -2639,6 +2639,7 @@ class Jasc {
 		const timer = setTimeout(function () {
 			clearTimeout(timer);
 			xhr.onload = xhr.onerror = xhr.ontimeout = null;
+			xhr.abort();
 			error(xhr, "timeout", event);
 			complete(xhr, xhr.responseType);
 		}, timeout + 1000);
