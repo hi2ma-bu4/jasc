@@ -1,4 +1,4 @@
-// jasc.js Ver.1.13.8
+// jasc.js Ver.1.13.9
 
 /*
 ! ！！注意！！
@@ -1671,9 +1671,10 @@ class Jasc {
 				continue;
 			}
 			elem.classList.add("jascImgErrGetter");
+			const _this = this;
 			if (!elem.onerror) {
 				elem.onerror = function (e) {
-					this._dispatchEvent("imageLoadError", [e]);
+					_this._dispatchEvent("imageLoadError", [e]);
 
 					elem.onerror = elem.onload = null;
 				};
