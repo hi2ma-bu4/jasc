@@ -19,10 +19,17 @@ new andesine.Vector3(x, y, z)
  * @returns {andesine}
  */
 var Andesine = (function () {
-	if (typeof jasc == "undefined") {
+	if (typeof Jasc !== "function") {
+		console.warn("[andesine]前提ライブラリ「Jasc」が存在しません。");
+		return;
+	}
+	if (typeof jasc !== "object") {
 		console.warn("[andesine]前提ライブラリ「jasc」が存在しません。");
 		return;
 	}
+
+	// 高速化用定数
+	const PI = Math.PI;
 
 	// Vectorシリーズ演算子オーバーロード用定数
 	const b_carry = 2n ** 53n;
@@ -37,56 +44,87 @@ var Andesine = (function () {
 	 * @returns {andesine}
 	 */
 	function andesine() {
-		if (jasc.customOperator) {
-			let co = jasc.customOperator;
-			// Vector2 & 3 演算子オーバーロード(無駄)
-			co(Vector2, "+")((a) => (b) => a.constructor.add(a, b));
-			co(Vector2, "+=")((a) => (b) => a.add(b));
-			co(Vector2, "-")((a) => (b) => a.constructor.sub(a, b));
-			co(Vector2, "-=")((a) => (b) => a.sub(b));
-			co(Vector2, "*")((a) => (b) => a.constructor.mul(a, b));
-			co(Vector2, "*=")((a) => (b) => a.mul(b));
-			co(Vector2, "/")((a) => (b) => a.constructor.div(a, b));
-			co(Vector2, "/=")((a) => (b) => a.div(b));
-			co(Vector2, "=")((a) => (b) => a.set(b));
+		let co = Jasc.customOperator;
+		// Vectorシリーズ 旧演算子オーバーロード(無駄)
+		co(Vector2, "+")((a) => (b) => a.constructor.add(a, b));
+		co(Vector2, "+=")((a) => (b) => a.add(b));
+		co(Vector2, "-")((a) => (b) => a.constructor.sub(a, b));
+		co(Vector2, "-=")((a) => (b) => a.sub(b));
+		co(Vector2, "*")((a) => (b) => a.constructor.mul(a, b));
+		co(Vector2, "*=")((a) => (b) => a.mul(b));
+		co(Vector2, "/")((a) => (b) => a.constructor.div(a, b));
+		co(Vector2, "/=")((a) => (b) => a.div(b));
+		co(Vector2, "=")((a) => (b) => a.set(b));
+	}
+
+	function toNumber(n) {
+		return Jasc.toNumber(n, true);
+	}
+
+	function getPosNumber(v) {
+		const tmp = Vector3.convert(v);
+		if (tmp) {
+			return tmp;
 		}
+		return new Vector3(v, v, v);
 	}
 
 	/**
 	 * 2次元座標
 	 * @typedef {Vector2} Vector2
-	 * @param {number} [x=0] - x座標
+	 * @param {number | bigint | Vector2 | number[]} [x=0] - x座標
 	 * @param {number} [y=0] - y座標
 	 * @returns {Vector2}
 	 */
 	class Vector2 {
+		#x;
+		#y;
+
 		constructor(x, y) {
-			this.x = x ?? 0;
-			if (typeof this.x !== "number") {
+			this.#x = x ?? 0;
+			if (typeof this.#x !== "number") {
 				let t = this.constructor.convert(x);
-				this.x = t.x;
-				this.y = t.y;
+				this.#x = t.x;
+				this.#y = t.y;
 				return;
 			}
-			this.y = y ?? 0;
+			this.#x = toNumber(this.#x);
+			this.#y = toNumber(y);
 		}
 
 		/**
 		 * 座標設定
-		 * @param {number} [x] - x座標
+		 * @param {number | bigint | Vector2 | number[]} [x] - x座標
 		 * @param {number} [y] - y座標
 		 * @returns {this}
 		 */
 		set(x, y) {
-			this.x = x ?? 0;
-			if (typeof this.x !== "number") {
+			this.#x = x ?? 0;
+			if (typeof this.#x !== "number") {
 				let t = this.constructor.convert(x);
-				this.x = t.x;
-				this.y = t.y;
+				this.#x = t.x;
+				this.#y = t.y;
 				return this;
 			}
-			this.y = y ?? this.x;
+			this.#x = toNumber(this.#x);
+			this.#y = toNumber(y ?? this.#x);
 			return this;
+		}
+
+		get x() {
+			return this.#x;
+		}
+
+		set x(x) {
+			this.#x = toNumber(x);
+		}
+
+		get y() {
+			return this.#y;
+		}
+
+		set y(y) {
+			this.#y = toNumber(y);
 		}
 
 		/**
@@ -95,7 +133,7 @@ var Andesine = (function () {
 		 * @readonly
 		 */
 		get array() {
-			return [this.x, this.y];
+			return [this.#x, this.#y];
 		}
 		/**
 		 * 連想配列で返却
@@ -103,7 +141,7 @@ var Andesine = (function () {
 		 * @readonly
 		 */
 		get associative() {
-			return { x: this.x, y: this.y };
+			return { x: this.#x, y: this.#y };
 		}
 
 		/**
@@ -117,10 +155,10 @@ var Andesine = (function () {
 			let v = Vector2.clamp(this);
 			let tmpX = BigInt(Math.trunc(v.x * fract));
 			let tmpY = BigInt(Math.trunc(v.y * fract));
-			if (this.x < bMin || bMax < this.x) {
+			if (this.#x < bMin || bMax < this.#x) {
 				console.warn(`[警告！] x座標は{${bMin}～${bMax}}の範囲に収める必要があります`);
 			}
-			if (this.y < bMin || bMax < this.y) {
+			if (this.#y < bMin || bMax < this.#y) {
 				console.warn(`[警告！] y座標は{${bMin}～${bMax}}の範囲に収める必要があります`);
 			}
 			let ret = tmpX < 0 ? b_carry | tmpX : tmpX;
@@ -148,7 +186,7 @@ var Andesine = (function () {
 		 * @overrides
 		 */
 		toString() {
-			return `Vector2(${this.x}, ${this.y})`;
+			return `Vector2(${this.#x}, ${this.#y})`;
 		}
 
 		/**
@@ -164,12 +202,12 @@ var Andesine = (function () {
 		 * @returns {Vector2}
 		 */
 		clone() {
-			return new Vector2(this.x, this.y);
+			return new Vector2(this.#x, this.#y);
 		}
 
 		/**
 		 * 統合
-		 * @param {Vector2 | number[] | Object | bigint} arr - 統合対象
+		 * @param {Vector2 | number[] | bigint} arr - 統合対象
 		 * @returns {Vector2 | null}
 		 * @static
 		 */
@@ -188,13 +226,13 @@ var Andesine = (function () {
 			}
 			// 配列
 			if (Array.isArray(arr)) {
-				if (arr.length < 2) {
+				if (arr.length < 1) {
 					return null;
 				}
-				return new Vector2(arr[0], arr[1]);
+				return new Vector2(arr[0], arr[1] ?? 0);
 			}
 			// 連想配列
-			if (jasc.isAssociative(arr)) {
+			if (Jasc.isAssociative(arr)) {
 				return new Vector2(arr.x, arr.y);
 			}
 			return null;
@@ -210,8 +248,9 @@ var Andesine = (function () {
 		 * @returns {this}
 		 */
 		add(v = 0) {
-			this.x += v.x ?? v;
-			this.y += v.y ?? v;
+			const t = getPosNumber(v);
+			this.#x += t.x;
+			this.#y += t.y;
 			return this;
 		}
 		/**
@@ -230,8 +269,9 @@ var Andesine = (function () {
 		 * @returns {this}
 		 */
 		sub(v = 0) {
-			this.x -= v.x ?? v;
-			this.y -= v.y ?? v;
+			const t = getPosNumber(v);
+			this.#x -= t.x;
+			this.#y -= t.y;
 			return this;
 		}
 		/**
@@ -251,8 +291,9 @@ var Andesine = (function () {
 		 * @returns {this}
 		 */
 		mul(v = 1) {
-			this.x *= v.x ?? v;
-			this.y *= v.y ?? v;
+			const t = getPosNumber(v);
+			this.#x *= t.x;
+			this.#y *= t.y;
 			return this;
 		}
 		/**
@@ -272,8 +313,9 @@ var Andesine = (function () {
 		 * @returns {this}
 		 */
 		div(v = 1) {
-			this.x /= v.x ?? v;
-			this.y /= v.y ?? v;
+			const t = getPosNumber(v);
+			this.#x /= t.x;
+			this.#y /= t.y;
 			return this;
 		}
 		/**
@@ -292,8 +334,8 @@ var Andesine = (function () {
 		 * @returns {this}
 		 */
 		pow(num1 = 1, num2) {
-			this.x = Math.pow(this.x, num1);
-			this.y = Math.pow(this.y, num2 ?? num1);
+			this.#x = Math.pow(this.#x, toNumber(num1));
+			this.#y = Math.pow(this.#y, toNumber(num2 ?? num1));
 			return this;
 		}
 
@@ -303,7 +345,7 @@ var Andesine = (function () {
 		 * @returns {boolean}
 		 */
 		eq(v) {
-			return jasc.compareFloats(this.x, v.x) && jasc.compareFloats(this.y, v.y);
+			return Jasc.compareFloats(this.#x, v.x) && Jasc.compareFloats(this.#y, v.y);
 		}
 		/**
 		 * 等しい
@@ -339,7 +381,7 @@ var Andesine = (function () {
 		 * @returns {boolean}
 		 */
 		gt(v) {
-			return this.x > v.x && this.y > v.y;
+			return this.#x > v.x && this.#y > v.y;
 		}
 		/**
 		 * 超(>)
@@ -357,7 +399,7 @@ var Andesine = (function () {
 		 * @returns {boolean}
 		 */
 		lt(v) {
-			return this.x < v.x && this.y < v.y;
+			return this.#x < v.x && this.#y < v.y;
 		}
 		/**
 		 * 未満(<)
@@ -375,7 +417,7 @@ var Andesine = (function () {
 		 * @returns {boolean}
 		 */
 		ge(v) {
-			return this.x >= v.x && this.y >= v.y;
+			return this.#x >= v.x && this.#y >= v.y;
 		}
 		/**
 		 * 以上(>=)
@@ -393,7 +435,7 @@ var Andesine = (function () {
 		 * @returns {boolean}
 		 */
 		le(v) {
-			return this.x <= v.x && this.y <= v.y;
+			return this.#x <= v.x && this.#y <= v.y;
 		}
 		/**
 		 * 以下(<=)
@@ -412,7 +454,7 @@ var Andesine = (function () {
 		 * @returns {number}
 		 */
 		dot(v) {
-			return this.x * v.x + this.y * v.y;
+			return this.#x * v.x + this.#y * v.y;
 		}
 		/**
 		 * ベクトルの内積
@@ -430,7 +472,7 @@ var Andesine = (function () {
 		 * @returns {number}
 		 */
 		cross(v) {
-			return this.x * v.y - this.y * v.x;
+			return this.#x * v.y - this.#y * v.x;
 		}
 		/**
 		 * ベクトルの外積
@@ -449,7 +491,7 @@ var Andesine = (function () {
 		 * @readonly
 		 */
 		get abs() {
-			return new Vector2(Math.abs(this.x), Math.abs(this.y));
+			return new Vector2(Math.abs(this.#x), Math.abs(this.#y));
 		}
 		/**
 		 * 符号のみ取得
@@ -457,7 +499,7 @@ var Andesine = (function () {
 		 * @readonly
 		 */
 		get sign() {
-			return new Vector2(Math.sign(this.x), Math.sign(this.y));
+			return new Vector2(Math.sign(this.#x), Math.sign(this.#y));
 		}
 		/**
 		 * 四捨五入
@@ -465,7 +507,7 @@ var Andesine = (function () {
 		 * @readonly
 		 */
 		get round() {
-			return new Vector2(Math.round(this.x), Math.round(this.y));
+			return new Vector2(Math.round(this.#x), Math.round(this.#y));
 		}
 		/**
 		 * 切り上げ
@@ -473,7 +515,7 @@ var Andesine = (function () {
 		 * @readonly
 		 */
 		get ceil() {
-			return new Vector2(Math.ceil(this.x), Math.ceil(this.y));
+			return new Vector2(Math.ceil(this.#x), Math.ceil(this.#y));
 		}
 		/**
 		 * 切り下げ
@@ -481,7 +523,7 @@ var Andesine = (function () {
 		 * @readonly
 		 */
 		get floor() {
-			return new Vector2(Math.floor(this.x), Math.floor(this.y));
+			return new Vector2(Math.floor(this.#x), Math.floor(this.#y));
 		}
 		/**
 		 * 切り捨て
@@ -489,7 +531,7 @@ var Andesine = (function () {
 		 * @readonly
 		 */
 		get trunc() {
-			return new Vector2(Math.trunc(this.x), Math.trunc(this.y));
+			return new Vector2(Math.trunc(this.#x), Math.trunc(this.#y));
 		}
 		/**
 		 * 小数部のみ
@@ -497,7 +539,7 @@ var Andesine = (function () {
 		 * @readonly
 		 */
 		get fract() {
-			return new Vector2(this.x - Math.floor(this.x), this.y - Math.floor(this.y));
+			return new Vector2(this.#x - Math.floor(this.#x), this.#y - Math.floor(this.#y));
 		}
 
 		/**
@@ -514,7 +556,7 @@ var Andesine = (function () {
 		 * @readonly
 		 */
 		get length() {
-			return Math.sqrt(this.x ** 2 + this.y ** 2);
+			return Math.sqrt(this.#x ** 2 + this.#y ** 2);
 		}
 		/**
 		 * ベクトルの正規化
@@ -523,7 +565,7 @@ var Andesine = (function () {
 		 */
 		get normalize() {
 			let l = this.length;
-			return new Vector2(this.x / l, this.y / l);
+			return new Vector2(this.#x / l, this.#y / l);
 		}
 
 		/**
@@ -533,15 +575,15 @@ var Andesine = (function () {
 		 * @returns {this}
 		 */
 		clamp(min = bMin, max = bMax) {
-			this.x = Math.max(min?.x ?? min, Math.min(max?.x ?? max, this.x));
-			this.y = Math.max(min?.y ?? min, Math.min(max?.y ?? max, this.y));
+			this.#x = Math.max(min?.x ?? toNumber(min), Math.min(max?.x ?? toNumber(max), this.#x));
+			this.#y = Math.max(min?.y ?? toNumber(min), Math.min(max?.y ?? toNumber(max), this.#y));
 			return this;
 		}
 		/**
 		 * 範囲内に収める
 		 * @param {Vector2} v - 対象ベクトル
-		 * @param {Vector2} [min=bMin] - 最小
-		 * @param {Vector2} [max=bMax] - 最大
+		 * @param {Vector2 | number} [min=bMin] - 最小
+		 * @param {Vector2 | number} [max=bMax] - 最大
 		 * @returns {Vector2}
 		 */
 		static clamp(v, min = bMin, max = bMax) {
@@ -557,21 +599,21 @@ var Andesine = (function () {
 		 * @returns {this}
 		 */
 		map(fromMin = bMin, fromMax = bMax, toMin = bMin, toMax = bMax) {
-			this.x = jasc.map(
+			this.#x = Jasc.map(
 				// x座標範囲設定
-				this.x,
-				fromMin?.x ?? fromMin,
-				fromMax?.x ?? fromMax,
-				toMin?.x ?? toMin,
-				toMax?.x ?? toMax
+				this.#x,
+				fromMin?.x ?? toNumber(fromMin),
+				fromMax?.x ?? toNumber(fromMax),
+				toMin?.x ?? toNumber(toMin),
+				toMax?.x ?? toNumber(toMax)
 			);
-			this.y = jasc.map(
+			this.#y = Jasc.map(
 				// y座標範囲設定
-				this.y,
-				fromMin?.y ?? fromMin,
-				fromMax?.y ?? fromMax,
-				toMin?.y ?? toMin,
-				toMax?.y ?? toMax
+				this.#y,
+				fromMin?.y ?? toNumber(fromMin),
+				fromMax?.y ?? toNumber(fromMax),
+				toMin?.y ?? toNumber(toMin),
+				toMax?.y ?? toNumber(toMax)
 			);
 			return this;
 		}
@@ -599,7 +641,7 @@ var Andesine = (function () {
 		 * @static
 		 */
 		static distance(v1, v2) {
-			return Vector2.sub(v1, v2).len;
+			return Vector2.sub(v1, v2).length;
 		}
 		/**
 		 * 2点間の角度
@@ -607,7 +649,7 @@ var Andesine = (function () {
 		 * @returns {number}
 		 */
 		angle(v) {
-			return Math.atan2(this.y - v.y, this.x - v.x);
+			return Math.atan2(this.#y - v.y, this.#x - v.x);
 		}
 		/**
 		 * 2点間の角度
@@ -642,32 +684,265 @@ var Andesine = (function () {
 			return Vector2.dot(v1, v2) === 0;
 		}
 
+		/**
+		 * 2点のそれぞれの最大値
+		 * @param {Vector2} v1 - 1つ目のベクトル
+		 * @param {Vector2} v2 - 2つ目のベクトル
+		 * @returns {Vector2}
+		 * @static
+		 */
+		static max(v1, v2) {
+			return new Vector2(Math.max(v1.x, v2.x), Math.max(v1.y, v2.y));
+		}
+		/**
+		 * 2点のそれぞれの最大値
+		 * @param {Vector2} v - 対象ベクトル
+		 * @returns {Vector2}
+		 * @deprecated
+		 */
+		max(v) {
+			return Vector2.max(this, v);
+		}
+
+		/**
+		 * 2点のそれぞれの最小値
+		 * @param {Vector2} v1 - 1つ目のベクトル
+		 * @param {Vector2} v2 - 2つ目のベクトル
+		 * @returns {Vector2}
+		 * @static
+		 */
+		static min(v1, v2) {
+			return new Vector2(Math.min(v1.x, v2.x), Math.min(v1.y, v2.y));
+		}
+		/**
+		 * 2点のそれぞれの最小値
+		 * @param {Vector2} v - 対象ベクトル
+		 * @returns {Vector2}
+		 * @deprecated
+		 */
+		min(v) {
+			return Vector2.min(this, v);
+		}
+
+		// ==================================================
+		// 動作関連
+		// ==================================================
+
+		/**
+		 * 2点間の線形補間
+		 * @param {bigint | number[] | Vector2} start - 開始地点
+		 * @param {bigint | number[] | Vector2} end - 終了地点
+		 * @param {number} t - 線形補間率(0~1)
+		 * @returns {Vector2}
+		 * @static
+		 */
+		static leap(start, end, t) {
+			const s = Vector2.convert(start);
+			const e = Vector2.convert(end);
+			return new Vector2(s.x + (e.x - s.x) * t, s.y + (e.y - s.y) * t);
+		}
+		/**
+		 * 2点間の線形補間の座標に移動
+		 * @param {bigint | number[] | Vector2} start - 開始地点
+		 * @param {bigint | number[] | Vector2} end - 終了地点
+		 * @param {number} t - 線形補間率(0~1)
+		 * @returns {this}
+		 */
+		leap(start, end, t) {
+			this.set(Vector2.leap(start, end, t));
+			return this;
+		}
+
+		/**
+		 * 2点間の滑らかな線形補間
+		 * @param {bigint | number[] | Vector2} start - 開始地点
+		 * @param {bigint | number[] | Vector2} end - 終了地点
+		 * @param {number} t - 線形補間率(0~1)
+		 * @returns {Vector2}
+		 * @static
+		 */
+		static smoothDamp(start, end, t) {
+			return Vector2.leap(start, end, -(Math.cos(PI * t) - 1) / 2);
+		}
+		/**
+		 * 2点間の滑らかな線形補間の座標に移動
+		 * @param {bigint | number[] | Vector2} start - 開始地点
+		 * @param {bigint | number[] | Vector2} end - 終了地点
+		 * @param {number} t - 線形補間率(0~1)
+		 * @returns {this}
+		 */
+		smoothDamp(start, end, t) {
+			this.set(Vector2.smoothDamp(start, end, t));
+			return this;
+		}
+
+		/**
+		 * スプライン曲線
+		 * @param {Vector2[]} points - 通過点の配列
+		 * @param {number} t - 線形補間率(0~1)
+		 * @returns {Vector2}
+		 * @static
+		 */
+		static spline(points, t) {
+			const n = points.length;
+			if (n < 2) {
+				throw new Error("ポイント数は少なくとも2以上必要です。");
+			}
+
+			if (n === 2) {
+				// 2点のみの場合は直線補間
+				return Vector2.leap(points[0], points[1], t);
+			}
+
+			// 一回統一
+			const _points = [];
+			for (let i = 0; i < n; i++) {
+				_points.push(Vector2.convert(points[i]));
+			}
+
+			// 3以下の場合は、最初と最後のポイントを複製
+			const extendedPoints = [_points[0], ..._points, _points[n - 1]];
+
+			const segmentCount = extendedPoints.length - 3;
+			const segment = Math.min((t * segmentCount) | 0, segmentCount - 1);
+			const localT = (t - segment / segmentCount) * segmentCount;
+			const p0 = extendedPoints[segment];
+			const p1 = extendedPoints[segment + 1];
+			const p2 = extendedPoints[segment + 2];
+			const p3 = extendedPoints[segment + 3];
+
+			return Vector2.catmullRom(p0, p1, p2, p3, localT);
+		}
+		/**
+		 * スプライン曲線
+		 * @param {Vector2[]} points - 通過点の配列
+		 * @param {number} t - 線形補間率(0~1)
+		 * @returns {Vector2}
+		 */
+		spline(points, t) {
+			this.set(Vector2.spline(points, t));
+			return this;
+		}
+
+		/**
+		 * Catmull-Rom補間
+		 * @param {Vector2} p0
+		 * @param {Vector2} p1
+		 * @param {Vector2} p2
+		 * @param {Vector2} p3
+		 * @param {number} t
+		 * @returns {Vector2}
+		 * @static
+		 */
+		static catmullRom(p0, p1, p2, p3, t) {
+			const t2 = t * t;
+			const t3 = t2 * t;
+
+			const m = Vector2.mul;
+
+			const v0 = m(Vec2(p2 - p0), 0.5);
+			const v1 = m(Vec2(p3 - p1), 0.5);
+
+			return Vec2(m(Vec2(2n * p1 - 2n * p2 + v0 + v1), t3) + m(Vec2(-3n * p1 + 3n * p2 - 2n * v0 - v1), t2) + m(v0, t) + p1);
+		}
+
 		// ==================================================
 		// よく使うベクトルの定義
 		// ==================================================
+		/**
+		 * 0ベクトル
+		 * @type {Vector2}
+		 * @readonly
+		 * @static
+		 */
 		static get zero() {
 			return new Vector2(0, 0);
 		}
+		/**
+		 * 1ベクトル
+		 * @type {Vector2}
+		 * @readonly
+		 * @static
+		 */
 		static get one() {
 			return new Vector2(1, 1);
 		}
+
+		/**
+		 * 単位ベクトル
+		 * @type {Vector2}
+		 * @readonly
+		 * @static
+		 */
 		static get up() {
 			return new Vector2(0, 1);
 		}
+		/**
+		 * 単位ベクトル
+		 * @type {Vector2}
+		 * @readonly
+		 * @static
+		 */
 		static get down() {
 			return new Vector2(0, -1);
 		}
+		/**
+		 * 単位ベクトル
+		 * @type {Vector2}
+		 * @readonly
+		 * @static
+		 */
 		static get left() {
 			return new Vector2(-1, 0);
 		}
+		/**
+		 * 単位ベクトル
+		 * @type {Vector2}
+		 * @readonly
+		 * @static
+		 */
 		static get right() {
 			return new Vector2(1, 0);
 		}
+
+		/**
+		 * 許容最大値
+		 * @type {Vector2}
+		 * @readonly
+		 * @static
+		 */
 		static get MAX_VECTOR() {
 			return new Vector2(bMax, bMax);
 		}
+		/**
+		 * 許容最小値
+		 * @type {Vector2}
+		 * @readonly
+		 * @static
+		 */
 		static get MIN_VECTOR() {
 			return new Vector2(bMin, bMin);
+		}
+
+		/**
+		 * 無限大
+		 * @type {Vector2}
+		 * @readonly
+		 * @static
+		 * @deprecated
+		 */
+		static get positiveInfinity() {
+			return new Vector2(Infinity, Infinity);
+		}
+		/**
+		 * 無限小
+		 * @type {Vector2}
+		 * @readonly
+		 * @static
+		 * @deprecated
+		 */
+		static get negativeInfinity() {
+			return new Vector2(-Infinity, -Infinity);
 		}
 	}
 
@@ -675,28 +950,30 @@ var Andesine = (function () {
 	 * 3次元座標
 	 * @extends {Vector2}
 	 * @typedef {Vector3} Vector3
-	 * @param {number} [x=0] - x座標
+	 * @param {number | bigint | Vector2 | number[]} [x=0] - x座標
 	 * @param {number} [y=0] - y座標
 	 * @param {number} [z=0] - z座標
 	 * @returns {Vector3}
 	 */
 	class Vector3 extends Vector2 {
+		#z;
+
 		constructor(x, y, z) {
 			if (x != undefined && typeof x != "number") {
 				super();
 				let t = this.constructor.convert(x);
 				this.x = t.x;
 				this.y = t.y;
-				this.z = t.z;
+				this.#z = t.z;
 				return;
 			}
 			super(x, y);
-			this.z = z ?? 0;
+			this.#z = toNumber(z);
 		}
 
 		/**
 		 * 座標設定
-		 * @param {number} [x] - x座標
+		 * @param {number | bigint | Vector2 | number[]} [x] - x座標
 		 * @param {number} [y] - y座標
 		 * @param {number} [z] - z座標
 		 * @returns {this}
@@ -708,7 +985,7 @@ var Andesine = (function () {
 				let t = this.constructor.convert(x);
 				this.x = t.x;
 				this.y = t.y;
-				this.z = t.z;
+				this.#z = t.z;
 				return this;
 			}
 			super.set(x, y);
@@ -717,8 +994,16 @@ var Andesine = (function () {
 					z = 0;
 				}
 			}
-			this.z = z ?? this.x;
+			this.#z = toNumber(z ?? this.x);
 			return this;
+		}
+
+		get z() {
+			return this.#z;
+		}
+
+		set z(z) {
+			this.#z = toNumber(z);
 		}
 
 		/**
@@ -728,7 +1013,7 @@ var Andesine = (function () {
 		 * @overrides
 		 */
 		get array() {
-			return [this.x, this.y, this.z];
+			return [this.x, this.y, this.#z];
 		}
 		/**
 		 * 連想配列で返却
@@ -737,7 +1022,7 @@ var Andesine = (function () {
 		 * @overrides
 		 */
 		get associative() {
-			return { x: this.x, y: this.y, z: this.z };
+			return { x: this.x, y: this.y, z: this.#z };
 		}
 
 		/**
@@ -751,7 +1036,7 @@ var Andesine = (function () {
 			let v = Vector3.clamp(this);
 			let ret = super.valueOf();
 			let tmpZ = BigInt(Math.trunc(v.z * fract));
-			if (this.z < bMin || bMax < this.z) {
+			if (this.#z < bMin || bMax < this.#z) {
 				console.warn(`[警告！] z座標は{${bMin}～${bMax}}の範囲に収める必要があります`);
 			}
 			ret += (tmpZ < 0 ? b_carry | tmpZ : tmpZ) * b_nextCarryBase * b_nextCarryBase;
@@ -847,7 +1132,7 @@ var Andesine = (function () {
 		 * @overrides
 		 */
 		toString() {
-			return `Vector3(${this.x}, ${this.y}, ${this.z})`;
+			return `Vector3(${this.x}, ${this.y}, ${this.#z})`;
 		}
 
 		/**
@@ -856,7 +1141,7 @@ var Andesine = (function () {
 		 * @overrides
 		 */
 		clone() {
-			return new Vector3(this.x, this.y, this.z);
+			return new Vector3(this.x, this.y, this.#z);
 		}
 
 		/**
@@ -887,7 +1172,7 @@ var Andesine = (function () {
 				return new Vector3(arr[0], arr[1], arr[2]);
 			}
 			// 連想配列
-			if (jasc.isAssociative(arr)) {
+			if (Jasc.isAssociative(arr)) {
 				return new Vector3(arr.x, arr.y, arr.z);
 			}
 			return null;
@@ -899,46 +1184,50 @@ var Andesine = (function () {
 
 		/**
 		 * 足し算
-		 * @param {Vector2} [v=0] - 足し算対象
+		 * @param {Vector2 | number} [v=0] - 足し算対象
 		 * @returns {this}
 		 * @overrides
 		 */
 		add(v = 0) {
 			super.add(v);
-			this.z += v.z ?? v;
+			const t = getPosNumber(v);
+			this.#z += t.z;
 			return this;
 		}
 		/**
 		 * 引き算
-		 * @param {Vector2} [v=0] - 引き算対象
+		 * @param {Vector2 | number} [v=0] - 引き算対象
 		 * @returns {this}
 		 * @overrides
 		 */
 		sub(v = 0) {
 			super.sub(v);
-			this.z -= v.z ?? v;
+			const t = getPosNumber(v);
+			this.#z -= t.z;
 			return this;
 		}
 		/**
 		 * 掛け算
-		 * @param {Vector2} [v=1] - 掛け算対象
+		 * @param {Vector2 | number} [v=1] - 掛け算対象
 		 * @returns {this}
 		 * @overrides
 		 */
 		mul(v = 1) {
 			super.mul(v);
-			this.z *= v.z ?? v;
+			const t = getPosNumber(v);
+			this.#z *= t.z;
 			return this;
 		}
 		/**
 		 * 除算
-		 * @param {Vector2} [v=1] - 除算対象
+		 * @param {Vector2 | number} [v=1] - 除算対象
 		 * @returns {this}
 		 * @overrides
 		 */
 		div(v = 1) {
 			super.div(v);
-			this.z /= v.z ?? v;
+			const t = getPosNumber(v);
+			this.#z /= t.z;
 			return this;
 		}
 		/**
@@ -954,7 +1243,7 @@ var Andesine = (function () {
 					num3 = 0;
 				}
 			}
-			this.z = Math.pow(this.z, num3 ?? num1);
+			this.#z = Math.pow(this.#z, toNumber(num3 ?? num1));
 			return this;
 		}
 
@@ -969,7 +1258,7 @@ var Andesine = (function () {
 			if (v instanceof Vector2) {
 				return f;
 			}
-			return f && jasc.compareFloats(this.z, v.z);
+			return f && Jasc.compareFloats(this.#z, v.z);
 		}
 		/**
 		 * 超(>)
@@ -982,7 +1271,7 @@ var Andesine = (function () {
 			if (v instanceof Vector2) {
 				return f;
 			}
-			return f && this.z > v.z;
+			return f && this.#z > v.z;
 		}
 		/**
 		 * 未満(<)
@@ -995,7 +1284,7 @@ var Andesine = (function () {
 			if (v instanceof Vector2) {
 				return f;
 			}
-			return f && this.z < v.z;
+			return f && this.#z < v.z;
 		}
 		/**
 		 * 以上(>=)
@@ -1008,7 +1297,7 @@ var Andesine = (function () {
 			if (v instanceof Vector2) {
 				return f;
 			}
-			return f && this.z >= v.z;
+			return f && this.#z >= v.z;
 		}
 		/**
 		 * 以下(<=)
@@ -1021,7 +1310,7 @@ var Andesine = (function () {
 			if (v instanceof Vector2) {
 				return f;
 			}
-			return f && this.z <= v.z;
+			return f && this.#z <= v.z;
 		}
 
 		/**
@@ -1031,7 +1320,7 @@ var Andesine = (function () {
 		 * @overrides
 		 */
 		dot(v) {
-			return this.x * v.x + this.y * v.y + this.z * v.z;
+			return this.x * v.x + this.y * v.y + this.#z * v.z;
 		}
 		/**
 		 * ベクトルの外積
@@ -1040,7 +1329,7 @@ var Andesine = (function () {
 		 * @overrides
 		 */
 		cross(v) {
-			return new Vector3(this.y * v.z - this.z * v.y, this.z * v.x - this.x * v.z, this.x * v.y - this.y * v.x);
+			return new Vector3(this.y * v.z - this.#z * v.y, this.#z * v.x - this.x * v.z, this.x * v.y - this.y * v.x);
 		}
 
 		/**
@@ -1050,7 +1339,7 @@ var Andesine = (function () {
 		 * @overrides
 		 */
 		get abs() {
-			return new Vector3(Math.abs(this.x), Math.abs(this.y), Math.abs(this.z));
+			return new Vector3(Math.abs(this.x), Math.abs(this.y), Math.abs(this.#z));
 		}
 		/**
 		 * 符号のみ取得
@@ -1059,7 +1348,7 @@ var Andesine = (function () {
 		 * @overrides
 		 */
 		get sign() {
-			return new Vector3(Math.sign(this.x), Math.sign(this.y), Math.sign(this.z));
+			return new Vector3(Math.sign(this.x), Math.sign(this.y), Math.sign(this.#z));
 		}
 		/**
 		 * 四捨五入
@@ -1068,7 +1357,7 @@ var Andesine = (function () {
 		 * @overrides
 		 */
 		get round() {
-			return new Vector3(Math.round(this.x), Math.round(this.y), Math.round(this.z));
+			return new Vector3(Math.round(this.x), Math.round(this.y), Math.round(this.#z));
 		}
 		/**
 		 * 切り上げ
@@ -1077,7 +1366,7 @@ var Andesine = (function () {
 		 * @overrides
 		 */
 		get ceil() {
-			return new Vector3(Math.ceil(this.x), Math.ceil(this.y), Math.ceil(this.z));
+			return new Vector3(Math.ceil(this.x), Math.ceil(this.y), Math.ceil(this.#z));
 		}
 		/**
 		 * 切り下げ
@@ -1086,7 +1375,7 @@ var Andesine = (function () {
 		 * @overrides
 		 */
 		get floor() {
-			return new Vector3(Math.floor(this.x), Math.floor(this.y), Math.floor(this.z));
+			return new Vector3(Math.floor(this.x), Math.floor(this.y), Math.floor(this.#z));
 		}
 		/**
 		 * 切り捨て
@@ -1095,7 +1384,7 @@ var Andesine = (function () {
 		 * @overrides
 		 */
 		get trunc() {
-			return new Vector3(Math.trunc(this.x), Math.trunc(this.y), Math.trunc(this.z));
+			return new Vector3(Math.trunc(this.x), Math.trunc(this.y), Math.trunc(this.#z));
 		}
 		/**
 		 * 小数部のみ
@@ -1104,7 +1393,7 @@ var Andesine = (function () {
 		 * @overrides
 		 */
 		get fract() {
-			return new Vector3(this.x - Math.floor(this.x), this.y - Math.floor(this.y), this.z - Math.floor(this.z));
+			return new Vector3(this.x - Math.floor(this.x), this.y - Math.floor(this.y), this.#z - Math.floor(this.#z));
 		}
 
 		/**
@@ -1114,7 +1403,7 @@ var Andesine = (function () {
 		 * @overrides
 		 */
 		get length() {
-			return Math.sqrt(this.x ** 2 + this.y ** 2 + this.z ** 2);
+			return Math.sqrt(this.x ** 2 + this.y ** 2 + this.#z ** 2);
 		}
 		/**
 		 * ベクトルの正規化
@@ -1124,7 +1413,7 @@ var Andesine = (function () {
 		 */
 		get normalize() {
 			let l = this.length;
-			return new Vector3(this.x / l, this.y / l, this.z / l);
+			return new Vector3(this.x / l, this.y / l, this.#z / l);
 		}
 		/**
 		 * 範囲内に収める
@@ -1135,7 +1424,7 @@ var Andesine = (function () {
 		 */
 		clamp(min = bMin, max = bMax) {
 			super.clamp(min, max);
-			this.z = Math.max(min?.z ?? min, Math.min(max?.z ?? max, this.z));
+			this.#z = Math.max(min?.z ?? toNumber(min), Math.min(max?.z ?? toNumber(max), this.#z));
 			return this;
 		}
 
@@ -1150,13 +1439,13 @@ var Andesine = (function () {
 		 */
 		map(fromMin = bMin, fromMax = bMax, toMin = bMin, toMax = bMax) {
 			super.map(fromMin, fromMax, toMin, toMax);
-			this.z = jasc.map(
+			this.#z = Jasc.map(
 				// z座標範囲設定
-				this.z,
-				fromMin?.z ?? fromMin,
-				fromMax?.z ?? fromMax,
-				toMin?.z ?? toMin,
-				toMax?.z ?? toMax
+				this.#z,
+				fromMin?.z ?? toNumber(fromMin),
+				fromMax?.z ?? toNumber(fromMax),
+				toMin?.z ?? toNumber(toMin),
+				toMax?.z ?? toNumber(toMax)
 			);
 			return this;
 		}
@@ -1186,38 +1475,229 @@ var Andesine = (function () {
 			return Math.acos(this.dot(v) / (this.length * v.length));
 		}
 
+		/**
+		 * 2つのベクトルの最大値
+		 * @param {Vector3} v1 - 1つ目のベクトル
+		 * @param {Vector3} v2 - 2つ目のベクトル
+		 * @returns {Vector3}
+		 * @static
+		 * @override
+		 */
+		static max(v1, v2) {
+			return new Vector3(Math.max(v1.x, v2.x), Math.max(v1.y, v2.y), Math.max(v1.z, v2.z));
+		}
+		/**
+		 * 2つのベクトルの最大値
+		 * @param {Vector3} v - 対象ベクトル
+		 * @returns {Vector3}
+		 * @deprecated
+		 * @override
+		 */
+		max(v) {
+			return Vector3.max(this, v);
+		}
+
+		/**
+		 * 2つのベクトルの最小値
+		 * @param {Vector3} v1 - 1つ目のベクトル
+		 * @param {Vector3} v2 - 2つ目のベクトル
+		 * @returns {Vector3}
+		 * @static
+		 * @override
+		 */
+		static min(v1, v2) {
+			return new Vector3(Math.min(v1.x, v2.x), Math.min(v1.y, v2.y), Math.min(v1.z, v2.z));
+		}
+		/**
+		 * 2つのベクトルの最小値
+		 * @param {Vector3} v1 - 対象ベクトル
+		 * @returns {Vector3}
+		 * @deprecated
+		 * @override
+		 */
+		min(v) {
+			return Vector3.min(this, v);
+		}
+
+		// ==================================================
+		// 動作関連
+		// ==================================================
+
+		/**
+		 * 2点間の線形補間
+		 * @param {Vector3 | number[]} start - 開始地点
+		 * @param {Vector3 | number[]} end - 終了地点
+		 * @param {number} t - 線形補間率(0~1)
+		 * @returns {Vector3}
+		 * @static
+		 * @override
+		 */
+		static leap(start, end, t) {
+			const s = Vector3.convert(start);
+			const e = Vector3.convert(end);
+			return new Vector3(s.x + (e.x - s.x) * t, s.y + (e.y - s.y) * t, s.z + (e.z - s.z) * t);
+		}
+		/**
+		 * 2点間の線形補間
+		 * @param {Vector3 | bigint | number[]} start - 開始地点
+		 * @param {Vector3 | bigint | number[]} end - 終了地点
+		 * @param {number} t - 線形補間率(0~1)
+		 * @returns {this}
+		 * @override
+		 */
+		leap(start, end, t) {
+			this.set(Vector3.leap(start, end, t));
+			return this;
+		}
+
+		/**
+		 * 2点間の滑らかな線形補間
+		 * @param {bigint | number[] | Vector3} start - 開始地点
+		 * @param {bigint | number[] | Vector3} end - 終了地点
+		 * @param {number} t - 線形補間率(0~1)
+		 * @returns {Vector3}
+		 * @static
+		 */
+		static smoothDamp(start, end, t) {
+			return Vector3.leap(start, end, -(eased = (Math.cos(PI * t) - 1) / 2));
+		}
+		/**
+		 * 2点間の滑らかな線形補間の座標に移動
+		 * @param {bigint | number[] | Vector3} start - 開始地点
+		 * @param {bigint | number[] | Vector3} end - 終了地点
+		 * @param {number} t - 線形補間率(0~1)
+		 * @returns {this}
+		 */
+		smoothDamp(start, end, t) {
+			this.set(Vector3.smoothDamp(start, end, t));
+			return this;
+		}
+
 		// ==================================================
 		// よく使うベクトルの定義
 		// ==================================================
+		/**
+		 * 0ベクトル
+		 * @returns {Vector3}
+		 * @readonly
+		 * @static
+		 * @override
+		 */
 		static get zero() {
 			return new Vector3(0, 0, 0);
 		}
+		/**
+		 * 1ベクトル
+		 * @returns {Vector3}
+		 * @readonly
+		 * @static
+		 * @override
+		 */
 		static get one() {
 			return new Vector3(1, 1, 1);
 		}
+
+		/**
+		 * 単位ベクトル
+		 * @returns {Vector3}
+		 * @readonly
+		 * @static
+		 * @override
+		 */
 		static get up() {
 			return new Vector3(0, 1, 0);
 		}
+		/**
+		 * 単位ベクトル
+		 * @returns {Vector3}
+		 * @readonly
+		 * @static
+		 * @override
+		 */
 		static get down() {
 			return new Vector3(0, -1, 0);
 		}
+		/**
+		 * 単位ベクトル
+		 * @returns {Vector3}
+		 * @readonly
+		 * @static
+		 * @override
+		 */
 		static get left() {
 			return new Vector3(-1, 0, 0);
 		}
+		/**
+		 * 単位ベクトル
+		 * @returns {Vector3}
+		 * @readonly
+		 * @static
+		 * @override
+		 */
 		static get right() {
 			return new Vector3(1, 0, 0);
 		}
+		/**
+		 * 単位ベクトル
+		 * @returns {Vector3}
+		 * @readonly
+		 * @static
+		 */
 		static get forward() {
 			return new Vector3(0, 0, 1);
 		}
-		static get backward() {
+		/**
+		 * 単位ベクトル
+		 * @returns {Vector3}
+		 * @readonly
+		 * @static
+		 */
+		static get back() {
 			return new Vector3(0, 0, -1);
 		}
+
+		/**
+		 * 許容最大値
+		 * @returns {Vector3}
+		 * @readonly
+		 * @static
+		 * @override
+		 */
 		static get MAX_VECTOR() {
 			return new Vector3(bMax, bMax, bMax);
 		}
+		/**
+		 * 許容最小値
+		 * @returns {Vector3}
+		 * @readonly
+		 * @static
+		 * @override
+		 */
 		static get MIN_VECTOR() {
 			return new Vector3(bMin, bMin, bMin);
+		}
+
+		/**
+		 * 無限大
+		 * @type {Vector3}
+		 * @readonly
+		 * @static
+		 * @override
+		 * @deprecated
+		 */
+		static get positiveInfinity() {
+			return new Vector3(Infinity, Infinity, Infinity);
+		}
+		/**
+		 * 無限小
+		 * @type {Vector3}
+		 * @readonly
+		 * @static
+		 * @override
+		 * @deprecated
+		 */
+		static get negativeInfinity() {
+			return new Vector3(-Infinity, -Infinity, -Infinity);
 		}
 	}
 
@@ -1232,10 +1712,13 @@ var Andesine = (function () {
 	 * @returns {Rectangle}
 	 */
 	class Rectangle {
+		#x;
+		#y;
+
 		constructor(x = 0, y = 0, width = 0, height = 0) {
 			if (typeof x === "number") {
 				// x y ??
-				this.vec = new Vector2(x, y);
+				this.position = new Vector2(x, y);
 				if (typeof width === "number") {
 					// w h
 					this.size = new Vector2(width, height);
@@ -1245,7 +1728,7 @@ var Andesine = (function () {
 				}
 			} else {
 				// xy ??
-				this.vec = Vector2.convert(x);
+				this.position = Vector2.convert(x);
 				if (typeof y === "number") {
 					// w h
 					this.size = new Vector2(y, width);
@@ -1262,7 +1745,7 @@ var Andesine = (function () {
 		 * @returns {boolean}
 		 */
 		hitTest(other) {
-			if (other.x >= this.x + this.width || this.x >= other.x + other.width || other.y >= this.y + this.height || this.y >= other.y + other.height) {
+			if (other.x >= this.#x + this.width || this.#x >= other.x + other.width || other.y >= this.#y + this.height || this.#y >= other.y + other.height) {
 				return false;
 			}
 			return true;
@@ -1270,16 +1753,16 @@ var Andesine = (function () {
 
 		// getter/setter
 		get x() {
-			return this.vec.x;
+			return this.position.x;
 		}
 		set x(x) {
-			this.vec.x = x;
+			this.position.x = x;
 		}
 		get y() {
-			return this.vec.y;
+			return this.position.y;
 		}
 		set y(y) {
-			this.vec.y = y;
+			this.position.y = y;
 		}
 		get width() {
 			return this.size.x;
@@ -1296,14 +1779,54 @@ var Andesine = (function () {
 	}
 
 	/**
-	 * 画像クラス
-	 * @param {Image} image - 画像
-	 * @param {Rectangle} rectangle - 矩形
+	 * 矩形(描画オブジェクト)
+	 * @param {Vector2} x - x,y座標
+	 * @param {Vector2} y - w,hサイズ
+	 * @param {string} [bg=""] - 背景色
+	 * @returns {Box}
 	 */
-	class Sprite {
-		constructor(image, rectangle) {
-			this.image = image;
-			this.rectangle = rectangle;
+	class Box {
+		constructor(ctx, xy = Vector2.zero, wh = Vector2.zero, bg = "") {
+			this.ctx = ctx;
+			this.rect = new Rectangle(xy, wh);
+			this.bg = bg;
+		}
+
+		/**
+		 * 描画
+		 * @param {boolean} [isDraw=true] - 描画するか
+		 * @returns {undefined}
+		 */
+		draw(isDraw = true) {
+			if (!isDraw) {
+				return;
+			}
+
+			this.ctx.fillStyle = this.bg;
+			this.ctx.fillRect(this.rect.x, this.rect.y, this.rect.width, this.rect.height);
+		}
+	}
+
+	/**
+	 * 矩形+テキスト(描画オブジェクト)
+	 * @param {Vector2} x - x,y座標
+	 * @param {Vector2} y - w,hサイズ
+	 * @param {string} [text=""] - テキスト
+	 * @param {string} [fg=""] - 文字色
+	 * @param {string} [bg=""] - 背景色
+	 * @returns {TextBox}
+	 */
+	class TextBox extends Box {
+		constructor(ctx, xy = Vector2.zero, wh = Vector2.zero, text, fg = "#000", bg = "") {
+			super(ctx, xy, wh, bg);
+			this.text = text;
+			this.fg = fg;
+		}
+
+		draw(isDraw = true) {
+			super.draw(isDraw);
+			this.ctx.fillStyle = "black";
+			this.ctx.fillText(this.text, this.rect.x + 5, this.rect.y + 10);
 		}
 	}
 
@@ -1389,125 +1912,6 @@ var Andesine = (function () {
 		}
 	}
 
-	/**
-	 * ゲームオブジェクト
-	 * @extends {EventDispatcher}
-	 * @typedef {Actor} Actor
-	 * @param {Vector2 | number[]} v - 座標
-	 * @param {Rectangle} hitArea - 当たり判定
-	 * @param {string[]} [tags=[]] - タグ
-	 * @returns {Actor}
-	 * @abstract
-	 */
-	class Actor extends EventDispatcher {
-		constructor(v, hitArea, tags = []) {
-			super();
-			this._vec = Vector2.convert(v);
-
-			this.hitArea = hitArea;
-			this._hitAreaOffsetX = hitArea.x;
-			this._hitAreaOffsetY = hitArea.y;
-			this.tags = tags;
-		}
-
-		/**
-		 * 更新時処理
-		 * @param {GameInfo} gameInfo - ゲーム情報
-		 * @param {Input} input - 入力情報
-		 * @returns {number | undefined} - 終了コード
-		 * @abstract
-		 */
-		update(gameInfo, input) {}
-
-		/**
-		 * 描画処理
-		 * @param {Object} ctx - 描画対象
-		 * @abstract
-		 */
-		render(ctx) {}
-
-		/**
-		 * タグに含まれるか
-		 * @param {string} tagName - タグ
-		 * @returns {boolean}
-		 */
-		hasTag(tagName) {
-			return this.tags.includes(tagName);
-		}
-
-		/**
-		 * 生成時にイベント送信
-		 * @param {Actor} actor - 生成したオブジェクト
-		 * @returns {undefined}
-		 */
-		spawnActor(actor) {
-			this.dispatchEvent("spawnactor", new GameEvent(actor));
-		}
-
-		/**
-		 * 破棄時にイベント送信
-		 * @returns {undefined}
-		 */
-		destroy() {
-			this.dispatchEvent("destroy", new GameEvent(this));
-		}
-
-		get x() {
-			return this._vec.x;
-		}
-		set x(value) {
-			this._vec.x = value;
-			this.hitArea.x = value + this._hitAreaOffsetX;
-		}
-		get y() {
-			return this._vec.y;
-		}
-		set y(value) {
-			this._vec.y = value;
-			this.hitArea.y = value + this._hitAreaOffsetY;
-		}
-	}
-
-	/**
-	 * 画像付きゲームオブジェクト
-	 * @extends {Actor}
-	 * @typedef {SpriteActor} SpriteActor
-	 * @param {Vector2 | number[]} v - 座標
-	 * @param {Sprite} sprite - 画像
-	 * @param {Rectangle} hitArea - 当たり判定
-	 * @param {string[]} [tags=[]] - タグ
-	 * @returns {SpriteActor}
-	 */
-	class SpriteActor extends Actor {
-		constructor(v, sprite, hitArea, tags = []) {
-			super(v, hitArea, tags);
-			this.sprite = sprite;
-		}
-
-		/**
-		 * 描画処理
-		 * @param {Object} ctx - 描画対象
-		 * @returns {undefined}
-		 * @override
-		 */
-		render(ctx) {
-			const rect = this.sprite.rectangle;
-			ctx.drawImage(this.sprite.image, rect.x, rect.y, rect.width, rect.height, this.x, this.y, rect.width, rect.height);
-		}
-
-		isOutOfBounds(boundRect) {
-			const actorLeft = this.x;
-			const actorRight = this.x + this.width;
-			const actorTop = this.y;
-			const actorBottom = this.y + this.height;
-
-			const horizontal = actorRight < boundRect.x || actorLeft > boundRect.width;
-			const vertical = actorBottom < boundRect.y || actorTop > boundRect.height;
-
-			return horizontal || vertical;
-		}
-	}
-
 	andesine.prototype = {
 		/**
 		 * 2次元座標(class)
@@ -1541,13 +1945,21 @@ var Andesine = (function () {
 
 		/**
 		 * 矩形(class)
-		 * @param {number | Vector2} x - x座標(x,y座標)
-		 * @param {number | Vector2} y - y座標(w,hサイズ)
-		 * @param {number} width - 幅
-		 * @param {number} height - 高さ
 		 * @returns {Rectangle}
 		 */
 		Rectangle,
+
+		/**
+		 * 矩形(描画オブジェクト)
+		 * @returns {Box}
+		 */
+		Box,
+
+		/**
+		 * 矩形+テキスト(描画オブジェクト)
+		 * @returns {TextBox}
+		 */
+		TextBox,
 
 		/**
 		 * イベント管理(class)
@@ -1562,19 +1974,6 @@ var Andesine = (function () {
 		 * @returns {GameEvent}
 		 */
 		GameEvent,
-
-		/**
-		 * ゲームオブジェクト(class)
-		 * - 継承利用 推奨
-		 * @returns {Actor}
-		 */
-		Actor,
-		/**
-		 * 画像付きゲームオブジェクト(class)
-		 * - 継承利用 推奨
-		 * @returns {SpriteActor}
-		 */
-		SpriteActor,
 	};
 
 	//初期化
