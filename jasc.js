@@ -1,4 +1,4 @@
-// jasc.js Ver.1.13.10
+// jasc.js Ver.1.14.1
 
 /*
 ! ！！注意！！
@@ -53,10 +53,10 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 * jasc.initSetting = args												//jasc初期設定(DOMContentLoaded以降変更不可)
 * jasc.setting = args													//jasc設定
 * jasc.addEventListener(eventType = "", callback, name = "", returnName = false)	//jasc内イベント設定
-* jasc.on(eventType = "", callback, name = "", returnName = false)																//jasc.addEventListenerと同じ
+* jasc.on(eventType = "", callback, name = "", returnName = false)		//jasc.addEventListenerと同じ
 * jasc.removeEventListener(eventType = "", name = "")					//jasc内イベント解除
-* jasc.off(eventType = "", name = "")															//jasc.removeEventListenerと同じ
-- jasc._dispatchEvent(eventType = "", args = [])						//jasc内イベント発火[システム使用用]
+* jasc.off(eventType = "", name = "")									//jasc.removeEventListenerと同じ
+- jasc._dispatchEvent(eventType = "", ...args)							//jasc内イベント発火[システム使用用]
 
 *- jasc開発者用関数
 * jasc.develop.createEvent(name)										//jasc内イベントリスナーの追加
@@ -86,7 +86,13 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 * jasc.loadFile(src, opt = {})											//ファイル動的読み込み
 * jasc.isExternalLink(elem)												//外部リンク判定
 * jasc.isTextNode(elem)													//テキストノード判定
-* jasc.waitForElement(selector, text = null, timeoutMs = 0, par = document)			//dom出現待機
+* jasc.waitForElement(selector, text = null, timeoutMs = 0, par = document)					//dom出現待機
+* jasc.addExEventListener(eventType = "", callback, elem, name = "", returnName = false)	//イベントリスナー拡張
+* jasc.onEx(eventType = "", callback, elem, name = "", returnName = false)					//jasc.addExEventListenerと同じ
+* jasc.removeExEventListener(eventType, name = "")											//イベントリスナー拡張 削除
+* jasc.offEx(eventType, name = "")															//jasc.removeExEventListenerと同じ
+- jasc._exEventIO(elem, eventType, name, callback)						//イベントリスナー拡張 作成・削除
+- jasc._dispatchExEvent(eventType, callback)							//イベントリスナー拡張 発火
 *- 基本構成(その他)
 * jasc.ajax(options = {})												//jQuery.ajaxの下位互換
 * Jasc.historyPush(url, title = "", history = true)						//動的url
@@ -100,14 +106,14 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 * Jasc.dataTypeFormatting(data, nestingDepth = 0)						//型統一変換
 - jasc.dataTypeFormatting(data, nestingDepth = 0)
 *- canvas描画
-* jasc.draw.text(ctx, xy, text, size, color, align = "center", base = "middle")	//canvasテキスト描画
-* jasc.draw.line(ctx, xy1, xy2, color)										//canvas線描画
-* jasc.draw.rect(ctx, xy, wh, color)											//canvas四角形描画
-* jasc.draw.circle(ctx, xy, r, color1, color2 = null)								//canvas円描画
-* jasc.draw.triangle(ctx, xy1, xy2, xy3, color)							//canvas三角形描画
+* jasc.draw.ctxSetting(ctx, opt = {})									//ctx設定・リセット
+* jasc.draw.canvasClear(ctx)											//キャンバスをクリア
 *- game動作
 * jasc.game.changeCurrentCanvas(key = "")								//現在のカレントキャンバスの管理
+* jasc.game.getCurrentCanvas()											//現在のカレントキャンバス取得
+* jasc.game.getCurrentCtx()												//現在のカレントキャンバス取得
 * jasc.game.canvasResize(width = 0, height = 0)							//ゲーム画面リサイズ
+* jasc.game.getCanvasSize(canvas)										//キャンバスサイズ取得
 *- 連想配列計算
 * Jasc.isAssociative(obj)												//連想配列判定
 - jasc.isAssociative(obj)
@@ -167,7 +173,7 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 * jasc.sendNotification(title, text, icon)								//通知送信
 - jasc.sendNotification(title, text, icon)
 *- class同士の演算補助
-* Jasc.customOperator(obj, op = "+")											//class同士の演算補助
+* Jasc.customOperator(obj, op = "+")									//class同士の演算補助
 - jasc.customOperator(obj, op = "+")
 *- cookie簡単操作
 * Jasc.getCookie(name)													//クッキー取得
@@ -177,7 +183,7 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 * Jasc.setCookie(name, value, opt = {})									//クッキー設定
 - jasc.setCookie(name, value, opt = {})
 *- オブジェクト操作
-* async Jasc.replaceAsync(str, regex, asyncFn)								//replaceの非同期版
+* async Jasc.replaceAsync(str, regex, asyncFn)							//replaceの非同期版
 - async jasc.replaceAsync(str, regex, asyncFn)
 * jasc.objDefineProperty(obj, name, opt = {})							//definePropertyを使いやすく
 * Jasc.getObjectPropertyNames(obj, depth = 0, isEnumerable = false)		//definePropertyをprototypeに使用した際の問題対策
@@ -698,6 +704,13 @@ class Jasc {
 	]);
 	static #jasc_devAdd_events = new Set();
 	#jasc_events = {};
+	static #jasc_add_exEvents = new Set([
+		// mouse & touch
+		"touchstart",
+		"touchmove",
+		"touchend",
+	]);
+	#jasc_exEvents = {};
 	static #_devEventCount = 0;
 	#_activeDevEventCount = -1;
 
@@ -706,6 +719,9 @@ class Jasc {
 	#_plugins_setting = {};
 	static #_pluginCount = 0;
 	#_activePluginCount = 0;
+
+	// 共有グローバル変数
+	static #_global = {};
 
 	#jasc_readonlyData = {
 		nowFps: 0,
@@ -849,7 +865,7 @@ class Jasc {
 
 		//* 画面サイズ変更
 		window.addEventListener("resize", function (e) {
-			_this._dispatchEvent("windowResize", [e]);
+			_this._dispatchEvent("windowResize", e);
 			if (_this.#jasc_settingData.isCanvasAutoResize) {
 				_this.game.canvasResize();
 			}
@@ -959,7 +975,7 @@ class Jasc {
 			//外部リンク判定
 			this.#_autoExLinkGet();
 
-			this._dispatchEvent("changeDOM", [records]);
+			this._dispatchEvent("changeDOM", records);
 		}
 		const observer = new MutationObserver(obs.bind(this));
 		observer.observe(document.body, {
@@ -982,7 +998,7 @@ class Jasc {
 
 		this.#_openFuncCreate();
 
-		this._dispatchEvent("DOMContentLoaded", [e]);
+		this._dispatchEvent("DOMContentLoaded", e);
 
 		// 画像err取得
 		this.#_autoImageErrorGet();
@@ -1010,7 +1026,7 @@ class Jasc {
 		// プラグイン更新
 		this.#pluginInit();
 
-		this._dispatchEvent("load", [e]);
+		this._dispatchEvent("load", e);
 
 		// jQuery存在判定
 		if (typeof jQuery == "undefined") {
@@ -1085,6 +1101,10 @@ class Jasc {
 		this.objDefineProperty(this.#jasc_readonlyData, "_eventListener", {
 			value: this.#jasc_events,
 		});
+		// exEvent読み出し用
+		this.objDefineProperty(this.#jasc_readonlyData, "_exEventListener", {
+			value: this.#jasc_exEvents,
+		});
 		// システムで使用しているリスト系
 		this.objDefineProperty(this.#jasc_readonlyData, "sysList", {
 			value: this.#jasc_sysListData,
@@ -1145,6 +1165,18 @@ class Jasc {
 			})(),
 		});
 
+		//* jasc共有グローバル変数
+		if (this.#jasc_readonlyData.isIframe) {
+			let gl = this.#jasc_readonlyData.topJasc?.constructor?.global?._getDictionary?.();
+			if (!gl) {
+				gl = this.#jasc_readonlyData.parentJasc?.constructor?.global?._getDictionary?.();
+			}
+			if (gl) {
+				Jasc.#_global = gl;
+				this._ccLog.log("共有グローバル変数を接続しました。", "pale", true);
+			}
+		}
+
 		//* フラグ関連
 		// bot(クローラー)か
 		this.objDefineProperty(this.#jasc_readonlyData, "isBot", {
@@ -1152,7 +1184,9 @@ class Jasc {
 		});
 		// モバイル端末か
 		this.objDefineProperty(this.#jasc_readonlyData, "isMobile", {
-			value: /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent),
+			value() {
+				return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+			},
 		});
 		{
 			// 使用ブラウザ種類
@@ -1283,13 +1317,26 @@ class Jasc {
 					}
 
 					for (let key in args) {
-						if (!(args[key] instanceof HTMLCanvasElement)) {
+						let obj = args[key];
+						if (typeof obj === "string") {
+							obj = _this.acq(obj);
+						} else if (Jasc.isAssociative(obj)) {
+							const c = document.createElement("canvas");
+							c.id = obj.id ?? key;
+							c.width = obj?.width ?? 100;
+							c.height = obj?.height ?? 100;
+							obj.parent ??= document.body;
+							obj.parent.appendChild(c);
+							obj = c;
+						}
+
+						if (!(obj instanceof HTMLCanvasElement)) {
 							_this._ccLog.log("HTMLCanvasElement以外の代入", "error");
 							continue;
 						}
 						if (!_this.#jasc_gameData.canvas[key]) {
-							_this.#jasc_gameData.canvas[key] = args[key];
-							_this._dispatchEvent("canvasAdd", [key, args[key]]);
+							_this.#jasc_gameData.canvas[key] = obj;
+							_this._dispatchEvent("canvasAdd", key, obj);
 						}
 					}
 					_ctxUpdate();
@@ -1314,7 +1361,7 @@ class Jasc {
 
 	#_jascAutoUpdate() {
 		if (this.#jasc_readonlyData.pressKeySet.size) {
-			this._dispatchEvent("keyPress", [this.#jasc_readonlyData.pressKeySet]);
+			this._dispatchEvent("keyPress", this.#jasc_readonlyData.pressKeySet);
 		}
 		this.#_eventListenerInit();
 		this.#pluginInit();
@@ -1505,6 +1552,11 @@ class Jasc {
 					this.#jasc_events[key] = {};
 				}
 			}
+			for (let key of Jasc.#jasc_add_exEvents) {
+				if (!this.#jasc_exEvents[key]) {
+					this.#jasc_exEvents[key] = {};
+				}
+			}
 		}
 		this.#_activeDevEventCount = Jasc.#_devEventCount;
 
@@ -1514,7 +1566,7 @@ class Jasc {
 			if (!this.#jasc_events[k]) {
 				this.#jasc_events[k] = {};
 				this._ccLog.log(`Jasc eventListener add: "${k}"`, "pale");
-				this._dispatchEvent("createEventType", [k]);
+				this._dispatchEvent("createEventType", k);
 			}
 		}
 	}
@@ -1536,7 +1588,7 @@ class Jasc {
 			};
 			this.#_plugins_setting[key] = obj;
 
-			this._dispatchEvent("addPlugin", [key, name]);
+			this._dispatchEvent("addPlugin", key, name);
 
 			// イベント登録
 			if (opt.eventTypes) {
@@ -1591,14 +1643,14 @@ class Jasc {
 				switch (w) {
 					case 0:
 						this._ccLog.log(`プラグイン(jasc.${n})を登録しました`, "pale");
-						this._dispatchEvent("methodAddPlugin", [key, n]);
+						this._dispatchEvent("methodAddPlugin", key, n);
 						break;
 					case 1:
 						this._ccLog.warn(`(jasc.${n})は既に使用されています！`, true);
 						break;
 					case 2:
 						this._ccLog.log(`プラグイン${key}が関数(jasc.${n})を上書きしました`, "pale");
-						this._dispatchEvent("methodOverwritePlugin", [key, n]);
+						this._dispatchEvent("methodOverwritePlugin", key, n);
 						break;
 				}
 			}
@@ -1674,7 +1726,7 @@ class Jasc {
 			const _this = this;
 			if (!elem.onerror) {
 				elem.onerror = function (e) {
-					_this._dispatchEvent("imageLoadError", [e]);
+					_this._dispatchEvent("imageLoadError", e);
 
 					elem.onerror = elem.onload = null;
 				};
@@ -1716,9 +1768,9 @@ class Jasc {
 				// テキストの場合のみ
 				if (this.isTextNode(elem)) {
 					elem.classList.add("jascExTextLink");
-					this._dispatchEvent("exTextLinkGet", [elem]);
+					this._dispatchEvent("exTextLinkGet", elem);
 				}
-				this._dispatchEvent("exLinkGet", [elem]);
+				this._dispatchEvent("exLinkGet", elem);
 			}
 			setCou++;
 		}
@@ -1779,14 +1831,14 @@ class Jasc {
 			this.#_fps_oldFrame = 0;
 		}
 
-		this._dispatchEvent("gameRequestAnimationFrame", [this.#_fps_frameCount, this.#_fps_doFrameCount]);
+		this._dispatchEvent("gameRequestAnimationFrame", this.#_fps_frameCount, this.#_fps_doFrameCount);
 		requestAnimationFrame(this.#gameRAFrame);
 	}.bind(this);
 
 	#gameFrameUpdate() {
 		this.#_jascAutoUpdate();
 
-		this._dispatchEvent("gameFrameUpdate", [this.#jasc_readonlyData.isDrawing]);
+		this._dispatchEvent("gameFrameUpdate", this.#jasc_readonlyData.isDrawing);
 
 		return;
 	}
@@ -1803,7 +1855,7 @@ class Jasc {
 				if (this.#_activeCanvasName === null) {
 					this.game.changeCurrentCanvas(key);
 				}
-				this._dispatchEvent("ctxAdd", [key, ctx]);
+				this._dispatchEvent("ctxAdd", key, ctx);
 			}
 		}
 		if (this.#jasc_settingData.isCanvasAutoResize) {
@@ -1872,18 +1924,17 @@ class Jasc {
 
 	/**
 	 * 疑似イベントリスナーの削除
-	 * @param {string} [eventType=""] - イベントの種類
-	 * @param {string} [name] - 削除時の参照用名称
-	 * @returns {0|1|2|string[]} 0:イベント削除成功 1:イベント削除失敗 2:イベント削除失敗(無効なイベント名)
+	 * @param {string} eventType - イベントの種類
+	 * @param {string} [name=""] - 削除時の参照用名称
+	 * @returns {0|1|2|object} 0:イベント削除成功 1:イベント削除失敗 2:イベント削除失敗(無効なイベント名)
 	 */
-	removeEventListener = function (eventType = "", name = "") {
+	removeEventListener = function (eventType, name = "") {
 		if (eventType == "type") {
 			let list = {};
-			let keys = Object.keys(this.#jasc_events);
-			for (let i = 0, li = keys.length; i < li; i++) {
-				len = Object.keys(this.#jasc_events[keys[i]]).length;
+			for (const key in this.#jasc_events) {
+				const len = Object.keys(this.#jasc_events[key]).length;
 				if (len) {
-					list[keys[i]] = len;
+					list[key] = len;
 				}
 			}
 			return list;
@@ -1891,7 +1942,7 @@ class Jasc {
 		if (Jasc.objHasOwnProperty(this.#jasc_events, eventType)[0]) {
 			if (Jasc.isAssociative(this.#jasc_events?.[eventType])) {
 				if (name != "") {
-					if (typeof this.#jasc_events?.[eventType]?.[name] != "function") {
+					if (typeof this.#jasc_events[eventType]?.[name] !== "function") {
 						return 2;
 					}
 					this.#jasc_events[eventType][name] = null;
@@ -1919,10 +1970,10 @@ class Jasc {
 	/**
 	 * 疑似イベントリスナーの発火
 	 * @param {string} [eventType=""] - イベントの種類
-	 * @param {list} [args=[]] - イベントの引数
+	 * @param {any[]} [args] - イベントの引数
 	 * @returns {number} - 発火したイベント数
 	 */
-	_dispatchEvent(eventType = "", args = []) {
+	_dispatchEvent(eventType = "", ...args) {
 		if (eventType === "runNow") {
 			return -1;
 		}
@@ -1945,10 +1996,65 @@ class Jasc {
 			}
 		}
 		if (eventType !== "dispatchEvent") {
-			this._dispatchEvent("dispatchEvent", [eventType, args, c]);
+			this._dispatchEvent("dispatchEvent", eventType, args, c);
 		}
 		return c;
 	}
+
+	/**
+	 * jascネットワーク グローバル変数管理
+	 * @static
+	 */
+	static global = {
+		/**
+		 * グローバル変数取得
+		 * @param {string} key - キー
+		 * @param {any} [defaultValue] - デフォルト値
+		 * @returns {any} 値
+		 */
+		get(key, defaultValue) {
+			if (key in Jasc.#_global) {
+				return Jasc.#_global[key];
+			}
+			return defaultValue;
+		},
+
+		/**
+		 * グローバル変数設定
+		 * @param {string} key - キー
+		 * @param {any} value - 値
+		 * @returns {undefined}
+		 * @throws {Error} キーが空の場合
+		 */
+		set(key, value) {
+			if (key == "") {
+				throw new Error("key is empty.");
+			}
+			Jasc.#_global[key] = value;
+		},
+
+		/**
+		 * グローバル変数削除
+		 * @param {string} key - キー
+		 * @returns {undefined}
+		 */
+		delete(key) {
+			Jasc.#_global[key] = undefined;
+			delete Jasc.#_global[key];
+		},
+
+		/**
+		 * グローバル変数オブジェクト取得(管理用)
+		 * @returns {object} jasc.#_global
+		 */
+		_getDictionary() {
+			return Jasc.#_global;
+		},
+	};
+	/**
+	 * jascネットワーク グローバル変数管理
+	 */
+	global = Jasc.global;
 
 	/**
 	 * jasc改造機能
@@ -2534,6 +2640,204 @@ class Jasc {
 		});
 	}
 
+	/**
+	 * イベントリスナー拡張
+	 * @param {string} [eventType=""] - イベントタイプ
+	 * @param {function} [callback] - イベントのコールバック関数
+	 * @param {jQuery|HTMLElement} elem - 対象
+	 * @param {string} [name] - 削除時の参照用名称
+	 * @param {boolean} [returnName=false] - 登録した名称を返すか
+	 * @returns {0|1|string|string[]} 登録した名称またはエラーコード
+	 */
+	addExEventListener = function (eventType = "", callback, elem, name = "", returnName = false) {
+		if (eventType === "type") {
+			return ["type", ...Object.keys(this.#jasc_exEvents)];
+		}
+		if (Jasc.objHasOwnProperty(this.#jasc_exEvents, eventType)[0]) {
+			if (callback && typeof callback == "function") {
+				if (typeof elem == "string") {
+					elem = this.acq(elem);
+					if (Array.isArray(elem)) {
+						elem = elem[0];
+					}
+				}
+				if (elem == null) {
+					return 1;
+				}
+				name = this._exEventIO(this.jQueryObjToDOM(elem), eventType, name, callback);
+
+				if (returnName) {
+					return name;
+				}
+				return 0;
+			} else if (callback == null) {
+				return this.#jasc_exEvents[eventType];
+			}
+		}
+		return 1;
+	}.bind(this);
+
+	/**
+	 * イベントリスナー拡張
+	 * @param {string} [eventType=""] - イベントタイプ
+	 * @param {function} [callback] - イベントのコールバック関数
+	 * @param {jQuery|HTMLElement} elem - 対象
+	 * @param {string} [name] - 削除時の参照用名称
+	 * @param {boolean} [returnName=false] - 登録した名称を返すか
+	 * @returns {0|1|string|string[]} 登録した名称またはエラーコード
+	 */
+	onEx = this.addExEventListener;
+
+	/**
+	 * イベントリスナー拡張 削除
+	 * @param {string} eventType - イベントタイプ
+	 * @param {string} [name=""] - 削除時の参照用名称
+	 * @returns {0|1|2|object} 0:イベント削除成功 1:イベント削除失敗 2:イベント削除失敗(無効なイベント名)
+	 */
+	removeExEventListener = function (eventType, name = "") {
+		if (eventType === "type") {
+			let list = {};
+			for (const key in this.#jasc_exEvents) {
+				const len = Object.keys(this.#jasc_exEvents[key]).length;
+				if (len) {
+					list[key] = len;
+				}
+			}
+			return list;
+		}
+		if (Jasc.objHasOwnProperty(this.#jasc_exEvents, eventType)[0]) {
+			if (Jasc.isAssociative(this.#jasc_exEvents?.[eventType])) {
+				if (name != "") {
+					if (!Jasc.isAssociative(typeof this.#jasc_exEvents[eventType]?.[name])) {
+						return 2;
+					}
+					const data = this.#jasc_exEvents[eventType][name];
+					this._exEventIO(data.elem, eventType, name);
+				} else {
+					for (const key in this.#jasc_exEvents?.[eventType]) {
+						const data = this.#jasc_exEvents[eventType][key];
+						this._exEventIO(data.elem, eventType, key);
+					}
+				}
+				return 0;
+			}
+			return 2;
+		}
+		return 1;
+	};
+
+	/**
+	 * イベントリスナー拡張 削除
+	 * @param {string} eventType - イベントタイプ
+	 * @param {string} [name=""] - 削除時の参照用名称
+	 * @returns {0|1|2|object} 0:イベント削除成功 1:イベント削除失敗 2:イベント削除失敗(無効なイベント名)
+	 */
+	offEx = this.removeExEventListener;
+
+	/**
+	 * イベントリスナー拡張 作成・削除
+	 * @param {HTMLElement} elem - 対象
+	 * @param {string} eventType - イベントタイプ
+	 * @param {string} name - 削除時の参照用名称
+	 * @param {function} [callback] - イベントのコールバック関数
+	 */
+	_exEventIO(elem, eventType, name, callback) {
+		if (callback == null) {
+			// 削除
+			const obj = this.#jasc_exEvents[eventType][name];
+			if (obj) {
+				switch (eventType) {
+					case "touchstart":
+						elem.removeEventListener("mousedown", obj.callback, false);
+						elem.removeEventListener("touchstart", obj.callback, false);
+						break;
+					case "touchmove":
+						elem.removeEventListener("mousemove", obj.callback, false);
+						elem.removeEventListener("touchmove", obj.callback, false);
+						break;
+					case "touchend":
+						elem.removeEventListener("mouseup", obj.callback, false);
+						elem.removeEventListener("touchend", obj.callback, false);
+						break;
+					default:
+				}
+
+				delete this.#jasc_exEvents[eventType][name];
+				return;
+			}
+		} else {
+			// 登録
+			const _dispatch = this._dispatchExEvent(eventType, callback);
+			const obj = {
+				callback: _dispatch,
+				elem: elem,
+			};
+			if (name === "") {
+				name = jasc.setAssociativeAutoName(this.#jasc_exEvents[eventType], obj, "__jasc");
+			} else {
+				this.#jasc_exEvents[eventType][name] = obj;
+			}
+			switch (eventType) {
+				case "touchstart":
+					elem.addEventListener("mousedown", _dispatch, false);
+					elem.addEventListener("touchstart", _dispatch, false);
+					break;
+				case "touchmove":
+					elem.addEventListener("mousemove", _dispatch, false);
+					elem.addEventListener("touchmove", _dispatch, false);
+					break;
+				case "touchend":
+					elem.addEventListener("mouseup", _dispatch, false);
+					elem.addEventListener("touchend", _dispatch, false);
+					break;
+				default:
+			}
+			return name;
+		}
+	}
+
+	/**
+	 * イベントリスナー拡張 発火
+	 * @param {string} eventType - イベントタイプ
+	 * @param {function} callback - イベントのコールバック関数
+	 * @returns {function} - イベントのコールバック関数
+	 */
+	_dispatchExEvent = function (eventType, callback) {
+		switch (eventType) {
+			case "touchstart":
+			case "touchmove":
+			case "touchend":
+				return function (e) {
+					const ret = [];
+					if (e.changedTouches) {
+						// touchイベント
+						for (const touch of e.changedTouches) {
+							ret.push(setDict(touch, "touch"));
+						}
+					} else {
+						// mouseイベント
+						ret.push(setDict(e, "mouse"));
+					}
+					callback?.(ret);
+				};
+			default:
+		}
+		return () => {};
+		function setDict(e, type) {
+			return {
+				type: type,
+				target: e.target,
+				event: e,
+				clientX: e.clientX,
+				clientY: e.clientY,
+				pageX: e.pageX,
+				pageY: e.pageY,
+				screenX: e.screenX,
+				screenY: e.screenY,
+			};
+		}
+	}.bind(this);
+
 	//======================
 	// 基本構成(その他)
 	//======================
@@ -2891,109 +3195,110 @@ class Jasc {
 	 */
 	draw = {
 		/**
-		 * 文字描画
-		 *
-		 * ※ctxにnullを代入するとカレントctxが使用されます。
+		 * ctxを設定・リセットする
 		 * @param {CanvasRenderingContext2D} ctx - 描画コンテキスト
-		 * @param {number[]} xy - xy座標
-		 * @param {string} text - 描画する文字
-		 * @param {number} size - 文字サイズ
-		 * @param {string} color - 文字色
-		 * @param {string} [align="center"] - 文字描画位置
-		 * @param {string} [base="middle"] - 文字描画位置
+		 * @param {object} [options] - オプション
+		 * @param {string} [options.direction="inherit"] - 文字方向
+		 * @param {string} [options.fillStyle="#000"] - 塗りつぶしのスタイル
+		 * @param {string} [options.filter="none"] - フィルター
+		 * @param {string} [options.font="10px sans-serif"] - フォント
+		 * @param {string} [options.fontKerning="auto"] - 文字間隔
+		 * @param {string} [options.fontStretch="normal"] - 文字伸縮
+		 * @param {string} [options.fontVariantCaps="normal"] - 文字大文字
+		 * @param {number} [options.globalAlpha=1] - アルファ
+		 * @param {string} [options.globalCompositeOperation="source-over"] - アルファ合成
+		 * @param {boolean} [options.imageSmoothingEnabled=true] - 画像のスムーシング
+		 * @param {string} [options.imageSmoothingQuality="low"] - 画像のスムーシング
+		 * @param {string} [options.letterSpacing="0px"] - 文字間隔
+		 * @param {string} [options.lineCap="butt"] - 線の端
+		 * @param {number} [options.lineDashOffset=0] - 線の間隔
+		 * @param {string} [options.lineJoin="miter"] - 線の結合
+		 * @param {number} [options.lineWidth=1] - 線の幅
+		 * @param {string} [options.strokeStyle="#000"] - 線のスタイル
+		 * @param {number} [options.miterLimit=10] - 線の結合
+		 * @param {number} [options.shadowBlur=0] - 影のぼかし
+		 * @param {string} [options.shadowColor="#000"] - 影の色
+		 * @param {number} [options.shadowOffsetX=0] - 影の位置
+		 * @param {number} [options.shadowOffsetY=0] - 影の位置
+		 * @param {number} [options.strokeMiterLimit=10] - 線の結合
+		 * @param {number} [options.strokeWidth=1] - 線の幅
+		 * @param {string} [options.textAlign="start"] - 文字の位置
+		 * @param {string} [options.textBaseline="alphabetic"] - 文字の位置
+		 * @param {string} [options.wordSpacing="0px"] - 単語間隔
 		 * @returns {undefined}
 		 */
-		text: function (ctx, xy, text, size, color, align = "center", base = "middle") {
+		ctxSetting: function (
+			ctx,
+			{
+				direction = "inherit", // 文字方向
+				fillStyle = "#000", // 塗りつぶしのスタイル
+				filter = "none", // フィルター
+				font = "10px sans-serif", // フォント
+				fontKerning = "auto", // 文字間隔
+				fontStretch = "normal", // 文字伸縮
+				fontVariantCaps = "normal", // 文字大文字
+				globalAlpha = 1, // アルファ
+				globalCompositeOperation = "source-over", // アルファ合成
+				imageSmoothingEnabled = true, // 画像のスムーシング
+				imageSmoothingQuality = "low", // 画像のスムーシング
+				letterSpacing = "0px", // 文字間隔
+				lineCap = "butt", // 線の端
+				lineDashOffset = 0, // 線の間隔
+				lineJoin = "miter", // 線の結合
+				lineWidth = 1, // 線の幅
+				miterLimit = 10, // 線の結合
+				shadowBlur = 0, // 影
+				shadowColor = "#000", // 影
+				shadowOffsetX = 0, // 影
+				shadowOffsetY = 0, // 影
+				strokeStyle = "#000", // 線のスタイル
+				textAlign = "start", // 文字の配置
+				textBaseline = "alphabetic", // 文字の配置
+				textRendering = "auto", // 文字の配置
+				wordSpacing = "0px", // 単語間隔
+			}
+		) {
 			if (ctx == null) {
 				ctx = this.#_activeCtx;
 			}
-			ctx.font = "bold " + size + 'px "太ゴシック","Arial Black"';
-			ctx.textAlign = align;
-			ctx.textBaseline = base;
-			ctx.fillStyle = color;
-			ctx.fillText(text, ...xy);
-		}.bind(this),
-		/**
-		 * 線描画
-		 *
-		 * ※ctxにnullを代入するとカレントctxが使用されます。
-		 * @param {CanvasRenderingContext2D} ctx - 描画コンテキスト
-		 * @param {number[]} xy1 - xy1
-		 * @param {number[]} xy2 - xy2
-		 * @param {string} color - 線色
-		 * @returns {undefined}
-		 */
-		line: function (ctx, xy1, xy2, color) {
-			if (ctx == null) {
-				ctx = this.#_activeCtx;
-			}
-			ctx.strokeStyle = color;
-			ctx.beginPath();
-			ctx.moveTo(...xy1);
-			ctx.lineTo(...xy2);
-			ctx.stroke();
+			ctx.direction = direction;
+			ctx.fillStyle = fillStyle;
+			ctx.filter = filter;
+			ctx.font = font;
+			ctx.fontKerning = fontKerning;
+			ctx.fontStretch = fontStretch;
+			ctx.fontVariantCaps = fontVariantCaps;
+			ctx.globalAlpha = globalAlpha;
+			ctx.globalCompositeOperation = globalCompositeOperation;
+			ctx.imageSmoothingEnabled = imageSmoothingEnabled;
+			ctx.imageSmoothingQuality = imageSmoothingQuality;
+			ctx.letterSpacing = letterSpacing;
+			ctx.lineCap = lineCap;
+			ctx.lineDashOffset = lineDashOffset;
+			ctx.lineJoin = lineJoin;
+			ctx.lineWidth = lineWidth;
+			ctx.miterLimit = miterLimit;
+			ctx.shadowBlur = shadowBlur;
+			ctx.shadowColor = shadowColor;
+			ctx.shadowOffsetX = shadowOffsetX;
+			ctx.shadowOffsetY = shadowOffsetY;
+			ctx.strokeStyle = strokeStyle;
+			ctx.textAlign = textAlign;
+			ctx.textBaseline = textBaseline;
+			ctx.textRendering = textRendering;
+			ctx.wordSpacing = wordSpacing;
 		}.bind(this),
 
 		/**
-		 * 四角描画
-		 *
-		 * ※ctxにnullを代入するとカレントctxが使用されます。
-		 * @param {CanvasRenderingContext2D} ctx - 描画コンテキスト
-		 * @param {number[]} xy - xy座標
-		 * @param {number[]} wh - 幅・高さ
-		 * @param {string} color - 色
-		 */
-		rect: function (ctx, xy, wh, color) {
-			if (ctx == null) {
-				ctx = this.#_activeCtx;
-			}
-			ctx.fillStyle = color;
-			ctx.fillRect(...xy, ...wh);
-		}.bind(this),
-		/**
-		 * 円描画
-		 *
-		 * ※ctxにnullを代入するとカレントctxが使用されます。
-		 * @param {CanvasRenderingContext2D} ctx - 描画コンテキスト
-		 * @param {number[]} xy - x座標
-		 * @param {number} r - 半径
-		 * @param {string} color1 - 塗り
-		 * @param {string} color2 - 線
+		 * キャンバスをクリア
+		 * @param {CanvasRenderingContext2D} [ctx] - キャンバス
 		 * @returns {undefined}
 		 */
-		circle: function (ctx, xy, r, color1, color2 = null) {
+		canvasClear: function (ctx) {
 			if (ctx == null) {
 				ctx = this.#_activeCtx;
 			}
-			ctx.fillStyle = color1;
-			ctx.strokeStyle = color2;
-			ctx.beginPath();
-			ctx.arc(...xy, r, 0, Math.PI * 2);
-			if (color2 != null) ctx.stroke();
-			if (color1 != null) ctx.fill();
-		}.bind(this),
-		/**
-		 * 三角描画
-		 *
-		 * ※ctxにnullを代入するとカレントctxが使用されます。
-		 * @param {CanvasRenderingContext2D} ctx - 描画コンテキスト
-		 * @param {number[]} xy1 - x1
-		 * @param {number[]} xy2 - x2
-		 * @param {number[]} xy3 - x3
-		 * @param {string} color - 色
-		 * @returns {undefined}
-		 */
-		triangle: function (ctx, xy1, xy2, xy3, color) {
-			if (ctx == null) {
-				ctx = this.#_activeCtx;
-			}
-			ctx.fillStyle = color;
-			ctx.beginPath();
-			ctx.moveTo(...xy1);
-			ctx.lineTo(...xy2);
-			ctx.lineTo(...xy3);
-			ctx.closePath();
-			ctx.fill();
+			ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 		}.bind(this),
 	};
 
@@ -3051,23 +3356,54 @@ class Jasc {
 				return;
 			}
 
-			let dpr = window.devicePixelRatio;
+			const dpr = window.devicePixelRatio || 1;
 
 			if (width == 0 && height == 0) {
 				let rect = document.body.getBoundingClientRect();
 				[width, height] = [rect.width, rect.height];
 			}
 			for (let key in _jasc_gameData.canvas) {
-				_jasc_gameData.canvas[key].width = width * dpr;
-				_jasc_gameData.canvas[key].height = height * dpr;
+				const canvas = _jasc_gameData.canvas[key];
+				canvas.width = width * dpr;
+				canvas.height = height * dpr;
 
 				_jasc_gameData.ctx[key].scale(dpr, dpr);
 
-				_jasc_gameData.canvas[key].style.width = width + "px";
-				_jasc_gameData.canvas[key].style.height = height + "px";
+				canvas.style.width = width + "px";
+				canvas.style.height = height + "px";
 			}
 
-			this._dispatchEvent("canvasResize", [width, height, dpr]);
+			this._dispatchEvent("canvasResize", width, height, dpr);
+		}.bind(this),
+
+		/**
+		 * キャンバス描画可能サイズを取得
+		 * @param {HTMLCanvasElement | string} [canvas] - キャンバス
+		 * @returns {object} { width, height }
+		 */
+		getCanvasSize: function (canvas) {
+			if (typeof canvas === "string") {
+				if (this.#jasc_gameData.canvas[canvas]) {
+					canvas = this.#jasc_gameData.canvas[canvas];
+				} else {
+					return false;
+				}
+			}
+			if (this.#jasc_settingData.isCanvasAutoResize) {
+				for (let key in this.#jasc_gameData.canvas) {
+					if (this.#jasc_gameData.canvas[key] == canvas) {
+						const dpr = window.devicePixelRatio || 1;
+						return {
+							width: canvas.width / dpr,
+							height: canvas.height / dpr,
+						};
+					}
+				}
+			}
+			return {
+				width: canvas.width,
+				height: canvas.height,
+			};
 		}.bind(this),
 	};
 
