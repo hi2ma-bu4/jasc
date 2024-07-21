@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.1
+// jasc.js Ver.1.14.2
 
 /*
 ! ！！注意！！
@@ -105,6 +105,8 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 - jasc.copy2Clipboard(data)
 * Jasc.dataTypeFormatting(data, nestingDepth = 0)						//型統一変換
 - jasc.dataTypeFormatting(data, nestingDepth = 0)
+* Jasc.isNativeCode(value, severe = true)								//値がNative Codeか判定
+- jasc.isNativeCode(value, severe = true)
 *- canvas描画
 * jasc.draw.ctxSetting(ctx, opt = {})									//ctx設定・リセット
 * jasc.draw.canvasClear(ctx)											//キャンバスをクリア
@@ -112,6 +114,7 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 * jasc.game.changeCurrentCanvas(key = "")								//現在のカレントキャンバスの管理
 * jasc.game.getCurrentCanvas()											//現在のカレントキャンバス取得
 * jasc.game.getCurrentCtx()												//現在のカレントキャンバス取得
+* jasc.game.getCanvasName(canvas)										//キャンバス名を取得
 * jasc.game.canvasResize(width = 0, height = 0)							//ゲーム画面リサイズ
 * jasc.game.getCanvasSize(canvas)										//キャンバスサイズ取得
 *- 連想配列計算
@@ -122,10 +125,10 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 * Jasc.setAssociativeAutoName(obj = {}, data = null, baseName = "", prefix = "-")		//連想配列自動名前付け
 - jasc.setAssociativeAutoName(obj = {}, data = null, baseName = "", prefix = "-")
 *- 文字計算
-* Jasc.uspTosp(str)														//不明な空白を半角スペースに変換
-- jasc.uspTosp(str)
-* Jasc.othToHira(str)													//全ての文字を共通化
-- jasc.othToHira(str)
+* Jasc.unifiedSpace(str)														//不明な空白を半角スペースに変換
+- jasc.unifiedSpace(str)
+* Jasc.normalize(str)													//全ての文字を共通化
+- jasc.normalize(str)
 * Jasc.escapeRegExp(str)												//正規表現文字列エスケープ
 - jasc.escapeRegExp(str)
 * Jasc.similarString(str, list)											//類似文字列検索
@@ -136,11 +139,17 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 - jasc.calcNgram(a, b, n)
 - Jasc._getToNgram(text, n = 3)											//N-gram計算
 - Jasc._getValuesSum(object)											//valueが数値のobjectの数値の和を求める関数。
+* Jasc.utf8ByteLength(str)												//UTF-8でのバイト数を取得
+- jasc.utf8ByteLength(str)
 *- 数学計算
 * Jasc.totp(key)														//自作ワンタイムパスワード
 - jasc.totp(key)
 * Jasc.formatDate(date, format)											//GASのUtilities.formatDateの下位互換
 - jasc.formatDate(date, format)
+* Jasc.random(min=100, max=0, step = 1)									//乱数生成
+- jasc.random(min=100, max=0, step = 1)
+* Jasc.roundToPrecision(num)											//小数点以下を程よく丸める
+- jasc.roundToPrecision(num)
 * jasc.permutation(arr, number = 0)										//組み合わせ列挙
 * Jasc.compareFloats(a, b)												//小数丸め誤差を無視して比較
 - jasc.compareFloats(a, b)
@@ -150,6 +159,8 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 - jasc.map(val, fromMin, fromMax, toMin, toMax)
 * Jasc.sum(...data)														//数値、配列の合計
 - jasc.sum(...data)
+* Jasc.constrain(val, baseMin, baseMax)									//範囲制限
+- jasc.constrain(val, baseMin, baseMax)
 * Jasc.range(start, end, step = 1)										//Pythonのrangeの移植
 - jasc.range(start, end, step = 1)
 * Jasc.divideEqually(val, cou)											//均等に数値を分割
@@ -318,6 +329,14 @@ class Jasc {
 	static #_RE_REGEXP = /[\\^$.*+?()[\]{}|]/g;
 
 	static #_ACQ_REGEXP = /[ :\[\]+>]|^.+[\.#]/;
+
+	// ネイティブコード正規表現
+	static #_NATIVE_CODE_REGEXP = [
+		// 簡易
+		/\{\s*\[native code\]\s*\}/,
+		// 厳格
+		/^\s*function\s*\w*\s*\([^)]*\)\s*\{\s*\[native code\]\s*\}\s*$/,
+	];
 
 	// ファイルタイプ正規表現
 	static #_FILETYPE_REG_LIST = [
@@ -668,6 +687,13 @@ class Jasc {
 	#jasc_gameData = {
 		canvas: {},
 		ctx: {},
+
+		nowFps: 0,
+		doFps: 0,
+
+		frame_avgTime: 0,
+		frame_minTime: 0,
+		frame_maxTime: 0,
 	};
 
 	// イベント
@@ -724,9 +750,6 @@ class Jasc {
 	static #_global = {};
 
 	#jasc_readonlyData = {
-		nowFps: 0,
-		doFps: 0,
-
 		pressKeySet: new Set(),
 
 		isDrawing: true,
@@ -751,6 +774,12 @@ class Jasc {
 	#_fps_BBForward = 0;
 	#_fps_frame;
 	#_fps_oldFrame = 0;
+
+	// game 処理時間計測用
+	#_game_frameUpdate_startTime = 0;
+	#_game_frameUpdate_sumTime = 0;
+	#_game_frameUpdate_minTime = Infinity;
+	#_game_frameUpdate_maxTime = 0;
 
 	// game処理使用用
 	#_activeCanvasName = null;
@@ -777,7 +806,7 @@ class Jasc {
 			}
 		);
 	})().bind(window);
-	static now = window.performance && (performance.now || performance.mozNow || performance.msNow || performance.oNow || performance.webkitNow);
+	static now = window.performance && (performance.now || performance.mozNow || performance.msNow || performance.oNow || performance.webkitNow).bind(performance);
 	static getTime() {
 		return (Jasc.now && Jasc.now.call(performance)) || new Date().getTime();
 	}
@@ -1116,15 +1145,7 @@ class Jasc {
 
 		//* game用
 		this.objDefineProperty(this.#jasc_readonlyData, "game", {
-			value: {},
-		});
-		// canvas読み出し用
-		this.objDefineProperty(this.#jasc_readonlyData.game, "_canvas", {
-			value: this.#jasc_gameData.canvas,
-		});
-		// ctx読み出し用
-		this.objDefineProperty(this.#jasc_readonlyData.game, "ctx", {
-			value: this.#jasc_gameData.ctx,
+			value: this.#jasc_gameData,
 		});
 
 		//* iframe関連
@@ -1793,7 +1814,7 @@ class Jasc {
 	}
 
 	#gameRAFrame = function () {
-		let times = this.getTime() - this.#_fps_startTime;
+		let times = Jasc.getTime() - this.#_fps_startTime;
 		this.#_fps_frame = (times / (1000 / this.#jasc_settingData.gameFps)) | 0;
 
 		let cou = this.#_fps_frame - this.#_fps_oldFrame + this.#_fps_BBForward;
@@ -1808,11 +1829,11 @@ class Jasc {
 				this.#_fps_BBForward = 0;
 			}
 
-			this.#jasc_readonlyData.isDrawing = false;
+			this.#jasc_gameData.isDrawing = false;
 
 			for (let i = cou - 1; i >= 0; i--) {
 				if (!i) {
-					this.#jasc_readonlyData.isDrawing = true;
+					this.#jasc_gameData.isDrawing = true;
 				}
 				if (this.#gameFrameUpdate()) {
 					return;
@@ -1823,11 +1844,20 @@ class Jasc {
 			this.#_fps_oldFrame = this.#_fps_frame;
 		}
 		if (times >= 1000) {
-			this.#jasc_readonlyData.nowFps = this.#_fps_frameCount;
-			this.#jasc_readonlyData.doFps = this.#_fps_doFrameCount;
+			const game = this.#jasc_gameData;
+			// 処理時間計測
+			game.frame_avgTime = this.#_game_frameUpdate_sumTime / this.#_fps_doFrameCount;
+			game.frame_maxTime = this.#_game_frameUpdate_maxTime;
+			game.frame_minTime = this.#_game_frameUpdate_minTime;
+			this.#_game_frameUpdate_sumTime = 0;
+			this.#_game_frameUpdate_maxTime = 0;
+			this.#_game_frameUpdate_minTime = Infinity;
+			// FPS計測
+			game.nowFps = this.#_fps_frameCount;
+			game.doFps = this.#_fps_doFrameCount;
 			this.#_fps_frameCount = 0;
 			this.#_fps_doFrameCount = 0;
-			this.#_fps_startTime = this.getTime();
+			this.#_fps_startTime = Jasc.getTime();
 			this.#_fps_oldFrame = 0;
 		}
 
@@ -1836,11 +1866,19 @@ class Jasc {
 	}.bind(this);
 
 	#gameFrameUpdate() {
+		this.#_game_frameUpdate_startTime = Jasc.getTime();
 		this.#_jascAutoUpdate();
 
-		this._dispatchEvent("gameFrameUpdate", this.#jasc_readonlyData.isDrawing);
+		this._dispatchEvent("gameFrameUpdate", this.#jasc_gameData.isDrawing);
 
-		return;
+		const times = Jasc.getTime() - this.#_game_frameUpdate_startTime;
+		if (times > this.#_game_frameUpdate_maxTime) {
+			this.#_game_frameUpdate_maxTime = times;
+		}
+		if (times < this.#_game_frameUpdate_minTime) {
+			this.#_game_frameUpdate_minTime = times;
+		}
+		this.#_game_frameUpdate_sumTime += times;
 	}
 
 	//======================
@@ -3186,6 +3224,28 @@ class Jasc {
 	 */
 	dataTypeFormatting = Jasc.dataTypeFormatting;
 
+	/**
+	 * 値がNative Codeか判定
+	 * @param {any} value - 値
+	 * @param {boolean} [severe=true] - 厳格な判定
+	 * @returns {boolean} 結果
+	 */
+	static isNativeCode(value, severe = true) {
+		if (typeof value !== "function") {
+			return false;
+		}
+		const functionString = Function.prototype.toString.call(value);
+
+		return Jasc.#_NATIVE_CODE_REGEXP[+severe].test(functionString);
+	}
+	/**
+	 * 値がNative Codeか判定
+	 * @param {any} value - 値
+	 * @param {boolean} [severe=true] - 厳格な判定
+	 * @returns {boolean} 結果
+	 */
+	isNativeCode = Jasc.isNativeCode;
+
 	//======================
 	// 基本構成(canvas)
 	//======================
@@ -3252,8 +3312,8 @@ class Jasc {
 				shadowOffsetX = 0, // 影
 				shadowOffsetY = 0, // 影
 				strokeStyle = "#000", // 線のスタイル
-				textAlign = "start", // 文字の配置
-				textBaseline = "alphabetic", // 文字の配置
+				textAlign = "left", // 文字の配置(startではない)
+				textBaseline = "top", // 文字の配置(alphabeticではない)
 				textRendering = "auto", // 文字の配置
 				wordSpacing = "0px", // 単語間隔
 			}
@@ -3342,6 +3402,29 @@ class Jasc {
 		 */
 		getCurrentCtx: function () {
 			return this.#_activeCtx;
+		}.bind(this),
+
+		/**
+		 * キャンバス名を取得
+		 * @param {HTMLCanvasElement | CanvasRenderingContext2D} canvas - キャンバス
+		 * @returns {string} キャンバス名
+		 */
+		getCanvasName: function (canvas) {
+			let type;
+			if (canvas instanceof HTMLCanvasElement) {
+				type = "canvas";
+			} else if (canvas instanceof CanvasRenderingContext2D) {
+				type = "ctx";
+			} else {
+				return false;
+			}
+
+			for (let key in this.#jasc_gameData[type]) {
+				if (this.#jasc_gameData[type][key] === canvas) {
+					return key;
+				}
+			}
+			return false;
 		}.bind(this),
 
 		/**
@@ -3558,41 +3641,35 @@ class Jasc {
 	 * @returns {string} 変換後
 	 * @static
 	 */
-	static usp2sp(str) {
-		return str.toString().replace(/[^\S\n\r]/g, " ");
-		/* 旧仕様
+	static unifiedSpace(str) {
 		return (
 			str
 				.toString()
-				.replace(/[ 　\t]/gu, " ")
-				.replace(/[\u00A0\u00AD\u034F\u061C]/gu, " ")
+				.replace(/[^\S\n\r]/g, " ")
+				.replace(/[\u00AD\u034F\u061C]/gu, " ")
 				.replace(/[\u115F\u1160\u17B4\u17B5\u180E]/gu, " ")
 				// \u200Dが合成時に消失したため部分対処
 				.replace(/[\u2000-\u200C\u200E-\u200F\u202F\u205F\u2060-\u2064\u206A-\u206F\u2800]/gu, " ")
-				.replace(/[\u3000\u3164]/gu, " ")
-				.replace(/[\uFEFF\uFFA0]/gu, " ")
+				.replace(/[\u3164\uFFA0]/gu, " ")
 				.replace(/[\u{1D159}\u{1D173}-\u{1D17A}]/gu, " ")
 		);
-		*/
 	}
 	/**
 	 * 不明なスペースを半角スペースに
 	 * @param {string} str - 対象文字列
 	 * @returns {string} 変換後
 	 */
-	usp2sp = Jasc.usp2sp;
+	unifiedSpace = Jasc.unifiedSpace;
 	/**
 	 * 全ての文字を共通化
 	 * @param {string} str - 対象文字列
 	 * @returns {string} 変換後
 	 * @static
 	 */
-	static othToHira(str, useLowerCase = true) {
-		str = Jasc.usp2sp(str)
+	static normalize(str, useLowerCase = true) {
+		str = Jasc.unifiedSpace(str)
 			.normalize("NFKC")
-			.replace(/[ア-ヺ]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0x60))
-			.replace(/[”“″‶〝‟]/gu, '"')
-			.replace(/[’‘′´‛‵＇]/gu, "'");
+			.replace(/[ア-ヺ]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0x60));
 		if (useLowerCase) {
 			str = str.toLowerCase();
 		}
@@ -3603,7 +3680,7 @@ class Jasc {
 	 * @param {string} str - 対象文字列
 	 * @returns {string} 変換後
 	 */
-	othToHira = Jasc.othToHira;
+	normalize = Jasc.normalize;
 
 	/**
 	 * 正規表現文字列エスケープ
@@ -3629,12 +3706,12 @@ class Jasc {
 	 * @static
 	 */
 	static similarString(str, list) {
-		str = Jasc.othToHira(str);
+		str = Jasc.normalize(str);
 		let dist;
 		let maxDist = 0,
 			maxInd = -1;
 		for (let i = 0, li = list.length; i < li; i++) {
-			let stli = Jasc.othToHira(list[i]);
+			let stli = Jasc.normalize(list[i]);
 
 			//レーベンシュタイン距離
 			dist = Jasc.levenshteinDistance(str, stli) * 25;
@@ -3745,6 +3822,35 @@ class Jasc {
 		return Object.values(object).reduce((prev, current) => prev + current, 0);
 	}
 
+	/**
+	 * UTF-8でのバイト数を取得
+	 * @param {string} str - 対象文字列
+	 * @returns {number} バイト数
+	 * @static
+	 */
+	static utf8ByteLength(str) {
+		let bytes = 0;
+		for (let i = 0; i < str.length; i++) {
+			const charCode = str.charCodeAt(i);
+			if (charCode <= 0x7f) {
+				bytes += 1;
+			} else if (charCode <= 0x7ff) {
+				bytes += 2;
+			} else if (charCode <= 0xffff) {
+				bytes += 3;
+			} else {
+				bytes += 4;
+			}
+		}
+		return bytes;
+	}
+	/**
+	 * UTF-8でのバイト数を取得
+	 * @param {string} str - 対象文字列
+	 * @returns {number} バイト数
+	 */
+	utf8ByteLength = Jasc.utf8ByteLength;
+
 	//======================
 	// 数学計算
 	//======================
@@ -3790,6 +3896,54 @@ class Jasc {
 	 * @returns {string} フォーマット結果
 	 */
 	formatDate = Jasc.formatDate;
+
+	/**
+	 * 乱数生成
+	 * @param {number} [min=1] - 最小値
+	 * @param {number} [max=0] - 最大値
+	 * @param {number} [step=1] - ステップ
+	 * @returns {number} 乱数
+	 */
+	static random(min = 100, max = 0, step = 1) {
+		if (min == max && step <= 0) {
+			return min;
+		}
+		if (max < min) {
+			[max, min] = [min, max];
+		}
+
+		// ステップのリストを作成
+		const steps = Math.floor((max - min) / step) + 1;
+
+		// 乱数のインデックスを生成
+		const randomIndex = Math.floor(Math.random() * steps);
+
+		// 乱数を計算
+		return Jasc.roundToPrecision(min + randomIndex * step);
+	}
+	/**
+	 * 乱数生成
+	 * @param {number} [min=1] - 最小値
+	 * @param {number} [max=0] - 最大値
+	 * @param {number} [step=1] - ステップ
+	 * @returns {number} 乱数
+	 */
+	random = Jasc.random;
+
+	/**
+	 * 小数点以下を程よく丸める
+	 * @param {number} num - 数値
+	 * @returns {number} 数値
+	 */
+	static roundToPrecision(num) {
+		return Number.parseFloat(num.toPrecision(10));
+	}
+	/**
+	 * 小数点以下を程よく丸める
+	 * @param {number} num - 数値
+	 * @returns {number} 数値
+	 */
+	roundToPrecision = Jasc.roundToPrecision;
 
 	/**
 	 * 組み合わせ列挙
@@ -3951,6 +4105,32 @@ class Jasc {
 	 * @returns {number} 合計
 	 */
 	sum = Jasc.sum;
+
+	/**
+	 * 範囲制限
+	 * @param {number} val - 数値
+	 * @param {number} baseMin - 最小値
+	 * @param {number} baseMax - 最大値
+	 */
+	static constrain(val, baseMin, baseMax) {
+		if (baseMin > baseMax) {
+			[baseMin, baseMax] = [baseMax, baseMin];
+		}
+		if (val < baseMin) {
+			return baseMin;
+		}
+		if (val > baseMax) {
+			return baseMax;
+		}
+		return val;
+	}
+	/**
+	 * 範囲制限
+	 * @param {number} val - 数値
+	 * @param {number} baseMin - 最小値
+	 * @param {number} baseMax - 最大値
+	 */
+	constrain = Jasc.constrain;
 
 	/**
 	 * Pythonのrangeの移植
@@ -4656,6 +4836,7 @@ class Jasc {
 
 	/**
 	 * 乱数生成
+	 * @memberof Jasc
 	 * @param {number} [seed=88675123] - 乱数シード
 	 * @returns {Jasc.Random} 乱数
 	 * @static
@@ -4693,6 +4874,7 @@ class Jasc {
 	//##################################################
 	/**
 	 * カスタムログ
+	 * @memberof Jasc
 	 * @param {object} [arg] - オプション
 	 * @param {boolean} [arg.debug=false] - 通常表示を表示するか
 	 * @param {boolean} [arg.oblInd=true] - 必須表示を表示するか
@@ -4868,6 +5050,7 @@ class Jasc {
 
 	/**
 	 * 画像管理
+	 * @memberof Jasc
 	 * @param {object} urls - URL
 	 * @returns {Jasc.AssetsManager}
 	 * @static
