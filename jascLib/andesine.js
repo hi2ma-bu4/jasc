@@ -1940,17 +1940,14 @@ class Andesine {
 	 * @returns {Andesine.DrawObject}
 	 */
 	static DrawObject = class extends Andesine.EventDispatcher {
-		#resetting;
-		#resettingType = null;
-
-		isDestroy = false;
-		isHidden = false;
-		_ctx = null;
-
 		#_parent = null;
 		#_children = {};
 		#_layerList = [];
 		#_layer = 0;
+
+		isDestroy = false;
+		isHidden = false;
+		_ctx = null;
 
 		constructor({ ctx = null, layer = 0 } = {}) {
 			super();
@@ -2443,7 +2440,6 @@ class Andesine {
 			} else {
 				v.y = +h;
 			}
-
 			if (!ch) {
 				this.#_size = null;
 			}
