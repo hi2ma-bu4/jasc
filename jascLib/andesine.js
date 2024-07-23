@@ -1938,12 +1938,14 @@ class Andesine {
 	 * @param {CanvasRenderingContext2D | String} [opt.ctx]
 	 * @param {number} [opt.layer] - レイヤー番号
 	 * @returns {Andesine.DrawObject}
+	 * @abstract
 	 */
 	static DrawObject = class extends Andesine.EventDispatcher {
 		#_parent = null;
 		#_children = {};
 		#_layerList = [];
 		#_layer = 0;
+		#_alpha = 1;
 
 		isDestroy = false;
 		isHidden = false;
@@ -1973,6 +1975,11 @@ class Andesine {
 			this.layer = layer;
 		}
 
+		/**
+		 * ctxを取得する
+		 * @returns {CanvasRenderingContext2D}
+		 * @readonly
+		 */
 		get ctx() {
 			if (this.#_parent) {
 				return this.#_parent.ctx;
@@ -1980,10 +1987,20 @@ class Andesine {
 			return this._ctx;
 		}
 
+		/**
+		 * レイヤーを取得する
+		 * @returns {number}
+		 * @readonly
+		 */
 		get layer() {
 			return this.#_layer;
 		}
 
+		/**
+		 * レイヤーを設定する
+		 * @param {number} layer_ - レイヤー番号
+		 * @throws {Error} レイヤーは数値で指定して下さい
+		 */
 		set layer(layer_) {
 			if (typeof layer_ !== "number") {
 				throw new Error("レイヤーは数値で指定して下さい。");
@@ -1995,8 +2012,50 @@ class Andesine {
 			}
 		}
 
+		/**
+		 * レイヤーリストを更新
+		 */
 		_updateLayerList() {
 			this.#_layerList = Andesine.Util.getSortLayerList(this.#_children);
+		}
+
+		/**
+		 * 透明度を取得する
+		 * @returns {number}
+		 * @readonly
+		 */
+		get alpha() {
+			return this.#_alpha;
+		}
+
+		/**
+		 * 透明度を設定する
+		 * @param {number} alpha_ - 透明度
+		 */
+		set alpha(alpha_) {
+			if (typeof alpha_ !== "number") {
+				throw new Error("透明度は数値で指定して下さい。");
+			}
+			if (alpha_ < 0) {
+				alpha_ = 0;
+			} else if (alpha_ > 1) {
+				alpha_ = 1;
+			}
+
+			this.#_alpha = alpha_;
+		}
+
+		/**
+		 * 画面描画時の透明度
+		 * @returns {number}
+		 * @readonly
+		 */
+		get displayAlpha() {
+			const alpha = this.#_alpha * (this.#_parent?.displayAlpha ?? 1);
+			if (alpha < 0.001) {
+				return 0;
+			}
+			return alpha;
 		}
 
 		/**
@@ -2007,6 +2066,7 @@ class Andesine {
 		 */
 		toString(nesting = 1) {
 			return Andesine.Util.createToStringMessage(this, nesting, {
+				name: this.name,
 				parent: this.#_parent,
 				childLength: this.childLength,
 			});
@@ -2092,46 +2152,71 @@ class Andesine {
 
 		/**
 		 * 全体ホバー時処理
-		 * @param {InstanceType<typeof Andesine.Vector2>} pos
-		 * @param {number} [deepHover=0]
+		 * @param {Object[]} es
+		 * @param {number[]} [deepHover=[]]
 		 * @returns {undefined}
 		 */
-		_systemHover(pos, deepHover = 0) {
+		_systemHover(es, deepHover = []) {
 			if (this.isDestroy) {
 				return;
 			}
 			if (this.isInside) {
-				const isHover = this.isInside(pos, false);
-				if (isHover) {
-					deepHover = 0;
+				if (!deepHover.length) {
+					deepHover = [];
+					for (let i = 0, li = es.length; i < li; i++) {
+						deepHover[i] = 0;
+					}
 				}
-				this.dispatchEvent("hover", isHover, deepHover, pos);
+				for (let i = 0, li = es.length; i < li; i++) {
+					const e = es[i];
+					const isHover = this.isInside(e.pos, false);
+					if (isHover) {
+						deepHover[i] = 0;
+					}
+				}
+				const event = new Andesine.GameHoverEvent(this, es, deepHover);
+				this.dispatchEvent("hover", event);
 			}
 
+			deepHover = deepHover.map((d) => d + 1);
+
 			for (let i = 0, li = this.#_layerList.length; i < li; i++) {
-				this.#_children[this.#_layerList[i]]._systemHover(pos, deepHover + 1);
+				this.#_children[this.#_layerList[i]]._systemHover(es, deepHover);
 			}
 		}
 
 		/**
 		 * 全体クリック時処理
-		 * @param {InstanceType<typeof Andesine.Vector2>} pos
-		 * @param {number} [deepClick=0]
+		 * @param {Object[]} es
+		 * @param {number[]} [deepClick=[]]
 		 * @returns {undefined}
 		 */
-		_systemClick(pos, deepClick = 0) {
+		_systemClick(es, deepClick = []) {
 			if (this.isDestroy) {
 				return;
 			}
 			if (this.isInside) {
-				const isClick = this.isInside(pos, false);
-				if (isClick) {
-					deepClick = 0;
+				if (!deepClick.length) {
+					deepClick = [];
+					for (let i = 0, li = es.length; i < li; i++) {
+						deepClick[i] = 0;
+					}
 				}
-				this.dispatchEvent("click", isClick, deepClick, pos);
+				for (let i = 0, li = es.length; i < li; i++) {
+					const e = es[i];
+					const isClick = this.isInside(e.pos, false);
+					if (isClick) {
+						deepClick[i] = 0;
+					}
+				}
+				const event = new Andesine.GameClickEvent(this, es, deepClick);
+				this.dispatchEvent("click", event);
 			}
+
+			deepClick = deepClick.map((d) => d + 1);
+
 			for (let i = 0, li = this.#_layerList.length; i < li; i++) {
-				this.#_children[this.#_layerList[i]]._systemClick(pos, deepClick + 1);
+				this.#_children[this.#_layerList[i]]._systemClick(es, deepClick);
 			}
 		}
 
@@ -2194,6 +2279,52 @@ class Andesine {
 		}
 
 		/**
+		 * 子オブジェクト名を取得
+		 * @param {InstanceType<typeof Andesine.DrawObject>} obj
+		 * @returns {string | null}
+		 */
+		getChildName(obj) {
+			for (let name in this.#_children) {
+				if (this.#_children[name] === obj) {
+					return name;
+				}
+			}
+			return null;
+		}
+
+		/**
+		 * オブジェクト名を取得
+		 * @returns {string | null}
+		 */
+		get name() {
+			if (this.#_parent) {
+				return this.#_parent.getChildName(this);
+			}
+			return null;
+		}
+
+		getParentList() {
+			const list = [];
+			let obj = this;
+			while (obj) {
+				list.push(obj);
+				obj = obj.parent;
+			}
+			list.reverse();
+			return list;
+		}
+
+		getParentNameList() {
+			const list = this.getParentList();
+			return list.map((obj) => obj.name);
+		}
+
+		getParentClassNameList() {
+			const list = this.getParentList();
+			return list.map((obj) => obj.constructor.name);
+		}
+
+		/**
 		 * 子オブジェクト数を取得
 		 * @returns {number}
 		 */
@@ -2243,6 +2374,7 @@ class Andesine {
 	 * @param {number | "max"} [opt.radius=0] - 丸角
 	 * @param {string} [opt.boxAlign="left"] - 描画起点位置
 	 * @param {string} [opt.boxBaseLine="top"] - 描画起点位置
+	 * @param {number} [opt.alpha=1] - 透明度
 	 * @returns {InstanceType<typeof Andesine.Box>}
 	 * @static
 	 */
@@ -2261,41 +2393,23 @@ class Andesine {
 	 * @param {number | "max"} [opt.radius=0] - 丸角
 	 * @param {string} [opt.boxAlign="left"] - 描画起点位置
 	 * @param {string} [opt.boxBaseLine="top"] - 描画起点位置
+	 * @param {number} [opt.alpha=1] - 透明度
 	 * @returns {Andesine.Box}
 	 */
 	static Box = class extends Andesine.DrawObject {
-		#_size;
-
 		_animationObj;
 
-		constructor({ ctx, layer = 0, position = Andesine.Vector2.zero, size = Andesine.Vector2.zero, bg = "", radius = 0, boxAlign = "left", boxBaseLine = "top" } = {}) {
+		constructor({ ctx, layer = 0, position = Andesine.Vector2.zero, size = Andesine.Vector2.zero, bg = "", radius = 0, boxAlign = "left", boxBaseLine = "top", alpha = 1 } = {}) {
 			super({ ctx, layer });
-			this.#_size = size;
+			this.setting = {
+				size,
+			};
 			this.rect = new Andesine.Rectangle(position, this._updateSize(false));
 			this.bg = bg;
 			this.radius = radius;
 			this.boxAlign = boxAlign;
 			this.boxBaseLine = boxBaseLine;
-		}
-
-		/**
-		 * サイズ取得
-		 * @returns {InstanceType<typeof Andesine.Vector2>}
-		 */
-		get size() {
-			if (this.#_size) {
-				return this.#_size;
-			}
-			return this.rect.size;
-		}
-
-		/**
-		 * サイズ設定
-		 * @param {InstanceType<typeof Andesine.Vector2> | string[]} arg
-		 */
-		set size(arg) {
-			this.#_size = arg;
-			this._updateSize(true);
+			this.alpha = alpha;
 		}
 
 		/**
@@ -2307,6 +2421,7 @@ class Andesine {
 		toString(nesting = 1) {
 			const pos = this.relative();
 			return Andesine.Util.createToStringMessage(this, nesting, {
+				name: this.name,
 				rect: this.rect,
 				absPos: pos,
 				childLength: this.childLength,
@@ -2329,10 +2444,14 @@ class Andesine {
 			} else {
 				setting.fillStyle = "transparent";
 			}
+			setting.globalAlpha = this.displayAlpha;
 			jasc.draw.ctxSetting(ctx, setting);
 			this.dispatchEvent("draw", this);
 			const pos = this.relative();
 			this._updateSize(true);
+			if (setting.globalAlpha == 0) {
+				return true;
+			}
 			let rad = this.radius;
 			if (rad === "max") {
 				rad = Math.min(this.rect.width, this.rect.height) / 2;
@@ -2347,6 +2466,7 @@ class Andesine {
 					ctx.fillRect(pos.x, pos.y, this.rect.width, this.rect.height);
 				}
 			}
+			return false;
 		}
 
 		/**
@@ -2394,7 +2514,7 @@ class Andesine {
 		 * @returns {InstanceType<typeof Andesine.Vector2>}
 		 */
 		_updateSize(commit = true) {
-			let size = this.#_size;
+			let size = this.setting.size;
 			if (!size) {
 				return this.rect.size.clone();
 			}
@@ -2403,7 +2523,7 @@ class Andesine {
 					this.rect.width = size.x;
 					this.rect.height = size.y;
 				}
-				this.#_size = null;
+				this.setting.size = null;
 				return size;
 			}
 			let w, h;
@@ -2418,7 +2538,7 @@ class Andesine {
 				if (size === "max" || size === "full") {
 					w = "max";
 					h = "max";
-					this.#_size = "max";
+					this.setting.size = "max";
 				}
 			} else {
 				return;
@@ -2441,7 +2561,7 @@ class Andesine {
 				v.y = +h;
 			}
 			if (!ch) {
-				this.#_size = null;
+				this.setting.size = null;
 			}
 			if (commit) {
 				this.rect.width = v.x;
@@ -2571,11 +2691,12 @@ class Andesine {
 	 * @param {number | "max"} [opt.radius=0] - 丸角
 	 * @param {string} [opt.boxAlign="left"] - 描画起点位置
 	 * @param {string} [opt.boxBaseLine="top"] - 描画起点位置
+	 * @param {number} [opt.alpha=1] - 透明度
 	 * @returns {Andesine.Frame}
 	 */
 	static Frame = class extends Andesine.Box {
-		constructor({ ctx, layer = 0, position = Andesine.Vector2.zero, size = Andesine.Vector2.zero, bg = "", radius = 0, boxAlign = "left", boxBaseLine = "top" } = {}) {
-			super({ ctx, layer, position, size, bg, radius, boxAlign, boxBaseLine });
+		constructor({ ctx, layer = 0, position = Andesine.Vector2.zero, size = Andesine.Vector2.zero, bg = "", radius = 0, boxAlign = "left", boxBaseLine = "top", alpha = 1 } = {}) {
+			super({ ctx, layer, position, size, bg, radius, boxAlign, boxBaseLine, alpha });
 		}
 	};
 
@@ -2623,6 +2744,7 @@ class Andesine {
 	 * @param {number} [opt.lineHeight=0] - 行間
 	 * @param {string} [opt.boxAlign="left"] - 描画起点位置
 	 * @param {string} [opt.boxBaseLine="top"] - 描画起点位置
+	 * @param {number} [opt.alpha=1] - 透明度
 	 * @returns {InstanceType<typeof Andesine.TextBox>}
 	 * @static
 	 */
@@ -2646,11 +2768,12 @@ class Andesine {
 	 * @param {number} [opt.lineHeight=0] - 行間
 	 * @param {string} [opt.boxAlign="left"] - 描画起点位置
 	 * @param {string} [opt.boxBaseLine="top"] - 描画起点位置
+	 * @param {number} [opt.alpha=1] - 透明度
 	 * @returns {Andesine.TextBox}
 	 */
 	static TextBox = class extends Andesine.Box {
-		constructor({ ctx, layer = 0, position = Andesine.Vector2.zero, size = Andesine.Vector2.zero, text = "", fg = "#000", bg = "", radius = 0, align = "left", lineHeight = 0, boxAlign = "left", boxBaseLine = "top" }) {
-			super({ ctx, layer, position, size, bg, radius, boxAlign, boxBaseLine });
+		constructor({ ctx, layer = 0, position = Andesine.Vector2.zero, size = Andesine.Vector2.zero, text = "", fg = "#000", bg = "", radius = 0, align = "left", lineHeight = 0, boxAlign = "left", boxBaseLine = "top", alpha = 1 }) {
+			super({ ctx, layer, position, size, bg, radius, boxAlign, boxBaseLine, alpha });
 			this.text = text;
 			this.fg = fg;
 			this.align = align;
@@ -2666,6 +2789,7 @@ class Andesine {
 		toString(nesting = 1) {
 			const pos = this.relative();
 			return Andesine.Util.createToStringMessage(this, nesting, {
+				name: this.name,
 				rect: this.rect,
 				absPos: pos,
 				text: this.text,
@@ -2674,13 +2798,14 @@ class Andesine {
 		}
 
 		draw() {
-			super.draw();
+			if (super.draw()) {
+				return true;
+			}
 			const ctx = this.ctx;
 			const pos = this.relative();
-			jasc.draw.ctxSetting(ctx, {
-				fillStyle: this.fg,
-			});
+			ctx.fillStyle = this.fg;
 			Andesine.fixedFillText(ctx, this.text, pos, this.rect.width, this.align, this.lineHeight);
+			return false;
 		}
 	};
 
@@ -2765,11 +2890,12 @@ class Andesine {
 	 * @param {number | "max"} [opt.radius=0] - 丸角
 	 * @param {string} [opt.boxAlign="left"] - 描画起点位置
 	 * @param {string} [opt.boxBaseLine="top"] - 描画起点位置
+	 * @param {number} [opt.alpha=1] - 透明度
 	 * @returns {Andesine.ImageBox}
 	 */
 	static ImageBox = class extends Andesine.Box {
-		constructor({ ctx, layer = 0, position = Andesine.Vector2.zero, size = Andesine.Vector2.zero, bg = "", radius = 0, boxAlign = "left", boxBaseLine = "top" } = {}) {
-			super({ ctx, layer, position, size, bg, radius, boxAlign, boxBaseLine });
+		constructor({ ctx, layer = 0, position = Andesine.Vector2.zero, size = Andesine.Vector2.zero, bg = "", radius = 0, boxAlign = "left", boxBaseLine = "top", alpha = 1 } = {}) {
+			super({ ctx, layer, position, size, bg, radius, boxAlign, boxBaseLine, alpha });
 			this.img = null;
 		}
 
@@ -2927,6 +3053,150 @@ class Andesine {
 			this.#callback = null;
 		}
 	};
+	// ####################################################################################################
+
+	/**
+	 * ゲームイベント(継承専用)
+	 * @memberof Andesine
+	 * @param  {InstanceType<typeof Andesine.DrawObject>} _this - 対象オブジェクト
+	 * @returns {Andesine.GameEvent}
+	 * @abstract
+	 */
+	static GameEvent = class {
+		constructor(_this) {
+			this.target = _this;
+		}
+
+		/**
+		 * 親オブジェクトを取得
+		 * @returns {InstanceType<typeof Andesine.DrawObject> | null}
+		 */
+		get parent() {
+			return this.target.parent;
+		}
+
+		/**
+		 * 使用可能最大サイズを取得
+		 * @returns {InstanceType<typeof Andesine.Vector2>}
+		 */
+		getFullSize() {
+			return Andesine.getFullSize(this.target, this.target.parent);
+		}
+	};
+
+	// ==================================================
+
+	/**
+	 * ゲームタッチイベント(継承専用)
+	 * @memberof Andesine
+	 * @param  {InstanceType<typeof Andesine.DrawObject>} _this - 対象オブジェクト
+	 * @param  {Object[]} es - タッチイベントリスト
+	 * @param  {number[]} deepList - タッチイベントの深さ
+	 * @returns {Andesine.GameClickEvent}
+	 * @abstract
+	 */
+	static GameTouchEvent = class extends Andesine.GameEvent {
+		#_deepList;
+		#_isThisEnable;
+
+		constructor(_this, es, deepList) {
+			super(_this);
+			this._es = es;
+			this.#_deepList = deepList.slice();
+		}
+
+		/**
+		 * タッチイベントリストを取得
+		 * @returns {Object[]}
+		 */
+		get eventList() {
+			return this._es;
+		}
+
+		/**
+		 * タッチタイプを取得
+		 * @returns {string} mouse | touch
+		 */
+		get touchType() {
+			return this._es[0].type;
+		}
+
+		get _isThisEnable() {
+			if (this.#_isThisEnable != null) {
+				return this.#_isThisEnable;
+			}
+			for (let i = 0, li = this.#_deepList.length; i < li; i++) {
+				if (this.#_deepList[i] == 0) {
+					this.#_isThisEnable = true;
+				}
+			}
+			this.#_isThisEnable = false;
+			return this.#_isThisEnable;
+		}
+
+		/**
+		 * 指定の深さまでのイベントを取得
+		 * @param  {number} [deep=0] - 深さ
+		 * @returns {Object[]}
+		 */
+		getDeepList(deep = 0) {
+			const list = [];
+			for (let i = 0, li = this.#_deepList.length; i < li; i++) {
+				if (this.#_deepList[i] <= deep) {
+					list.push(this._es[i]);
+				}
+			}
+			return list;
+		}
+	};
+
+	// ==================================================
+
+	/**
+	 * ゲームホバーイベント
+	 * @memberof Andesine
+	 * @param  {InstanceType<typeof Andesine.DrawObject>} _this - 対象オブジェクト
+	 * @param  {Object[]} es - タッチイベントリスト
+	 * @param  {number[]} deepHover - ホバー中の深さ
+	 * @returns {Andesine.GameHoverEvent}
+	 */
+	static GameHoverEvent = class extends Andesine.GameTouchEvent {
+		constructor(_this, es, deepHover) {
+			super(_this, es, deepHover);
+		}
+
+		/**
+		 * 自身はホバー中かを取得
+		 * @returns {boolean}
+		 * @readonly
+		 */
+		get isThisHover() {
+			return this._isThisEnable;
+		}
+	};
+
+	/**
+	 * ゲームクリックイベント
+	 * @memberof Andesine
+	 * @param  {InstanceType<typeof Andesine.DrawObject>} _this - 対象オブジェクト
+	 * @param  {Object[]} es - タッチイベントリスト
+	 * @param  {number[]} deepClick - クリック中の深さ
+	 * @returns {Andesine.GameClickEvent}
+	 */
+	static GameClickEvent = class extends Andesine.GameTouchEvent {
+		constructor(_this, es, deepClick) {
+			super(_this, es, deepClick);
+		}
+
+		/**
+		 * 自身はクリック中かを取得
+		 * @returns {boolean}
+		 * @readonly
+		 */
+		get isThisClick() {
+			return this._isThisEnable;
+		}
+	};
 
 	// ####################################################################################################
 
@@ -2941,20 +3211,27 @@ class Andesine {
 
 		constructor(canvas) {
 			this.canvas = canvas;
-			this.canvas.addEventListener("click", (e) => {
-				const rect = canvas.getBoundingClientRect();
-				const pos = new Andesine.Vector2(e.clientX - rect.left, e.clientY - rect.top);
-				this._click(pos);
-			});
+			jasc.onEx(
+				"touchend",
+				(es) => {
+					const rect = canvas.getBoundingClientRect();
+					for (let i = 0, li = es.length; i < li; i++) {
+						const e = es[i];
+						es[i].pos = new Andesine.Vector2(e.clientX - rect.left, e.clientY - rect.top);
+					}
+					this._click(es);
+				},
+				this.canvas
+			);
 			jasc.onEx(
 				"touchmove",
 				(es) => {
 					const rect = canvas.getBoundingClientRect();
 					for (let i = 0, li = es.length; i < li; i++) {
 						const e = es[i];
-						const pos = new Andesine.Vector2(e.clientX - rect.left, e.clientY - rect.top);
-						this._hover(pos);
+						es[i].pos = new Andesine.Vector2(e.clientX - rect.left, e.clientY - rect.top);
 					}
+					this._hover(es);
 				},
 				this.canvas
 			);
@@ -2962,6 +3239,19 @@ class Andesine {
 
 		_updateLayerList() {
 			this.#layerList = Andesine.Util.getSortLayerList(this.#children);
+		}
+
+		/**
+		 * 文字列で返却
+		 * @param {number} [nesting] - 表示階層
+		 * @returns {string}
+		 * @override
+		 */
+		toString(nesting = 1) {
+			return Andesine.Util.createToStringMessage(this, nesting, {
+				children: this.#children,
+				childLength: this.childLength,
+			});
 		}
 
 		/**
@@ -3007,15 +3297,15 @@ class Andesine {
 			}
 		}
 
-		_hover(pos) {
+		_hover(es) {
 			for (let i = 0, li = this.#layerList.length; i < li; i++) {
-				this.#children[this.#layerList[i]]._systemHover(pos);
+				this.#children[this.#layerList[i]]._systemHover(es);
 			}
 		}
 
-		_click(pos) {
+		_click(es) {
 			for (let i = 0, li = this.#layerList.length; i < li; i++) {
-				this.#children[this.#layerList[i]]._systemClick(pos);
+				this.#children[this.#layerList[i]]._systemClick(es);
 			}
 		}
 
@@ -3072,6 +3362,28 @@ class Andesine {
 		}
 
 		/**
+		 * 子オブジェクト名を取得
+		 * @param {InstanceType<typeof Andesine.DrawObject>} obj
+		 * @returns {string | null}
+		 */
+		getChildName(obj) {
+			for (let name in this.#children) {
+				if (this.#children[name] === obj) {
+					return name;
+				}
+			}
+			return null;
+		}
+
+		/**
+		 * オブジェクト名を取得
+		 * @returns {string | null}
+		 */
+		get name() {
+			return; //TODO
+		}
+
+		/**
 		 * 子オブジェクト数を取得
 		 * @returns {number}
 		 */
@@ -3097,6 +3409,19 @@ class Andesine {
 	 */
 	static GameManager = class {
 		#canvasDict = {};
+
+		/**
+		 * 文字列で返却
+		 * @param {number} [nesting] - 表示階層
+		 * @returns {string}
+		 * @override
+		 */
+		toString(nesting = 1) {
+			return Andesine.Util.createToStringMessage(this, nesting, {
+				canvas: this.#canvasDict,
+				canvasLength: this.getCanvasList().length,
+			});
+		}
 
 		/**
 		 * 全体描画オブジェクトのリセット
@@ -3164,12 +3489,38 @@ class Andesine {
 		 * @param {string} name - オブジェクト名
 		 * @returns {InstanceType<typeof Andesine.DrawObject>} 描画オブジェクト
 		 */
-		getDrawObject(canvasName, name) {
+		_getDrawObject(canvasName, name) {
 			if (!this.#canvasDict[canvasName]) {
 				console.warn(`キャンバス「${canvasName}」は存在しません。`);
 				return null;
 			}
 			return this.#canvasDict[canvasName].getChild(name);
+		}
+
+		/**
+		 * 描画オブジェクトを取得(階層指定)
+		 * @param {string[]} nameList - オブジェクト名
+		 * @returns {InstanceType<typeof Andesine.DrawObject> | null}
+		 */
+		getDrawObject(...nameList) {
+			if (Array.isArray(nameList[0])) {
+				nameList = nameList[0];
+			}
+			const len = nameList.length;
+			if (len === 1) {
+				return this.getCanvas(nameList[0]);
+			}
+			let p = this._getDrawObject(nameList[0], nameList[1]);
+			if (len === 2) {
+				return p;
+			}
+			for (let i = 2; i < len; i++) {
+				p = p.getChild(nameList[i]);
+				if (!p) {
+					return null;
+				}
+			}
+			return p;
 		}
 
 		/**
@@ -3222,9 +3573,30 @@ class Andesine {
 
 		/**
 		 * キャンバスを取得
+		 * @param {string | HTMLCanvasElement | InstanceType<typeof Andesine._Canvas>} name
+		 * @returns {string | null}
 		 */
 		getCanvas(name) {
-			return this.#canvasDict[name];
+			if (typeof name === "string") {
+				return this.#canvasDict[name];
+			}
+			if (name instanceof Andesine._Canvas) {
+				for (let key in this.#canvasDict) {
+					if (this.#canvasDict[key] === name) {
+						return key;
+					}
+				}
+				return null;
+			}
+			if (name instanceof HTMLCanvasElement) {
+				for (let key in this.#canvasDict) {
+					if (this.#canvasDict[key].canvas === name) {
+						return key;
+					}
+				}
+				return null;
+			}
+			return null;
 		}
 
 		/**
@@ -3347,16 +3719,21 @@ class Andesine {
 					argStr.push(toString(args[i], nesting));
 				}
 			}
+			//const constructorName = this.getParentClassNameList(obj).join(".");
+			const constructorName = obj.constructor.name;
 			switch (type) {
 				case "Array":
-					return `<${obj.constructor.name} (${argStr.join(", ")})>`;
+					return `<${constructorName} (${argStr.join(", ")})>`;
 				case "Dict":
-					return `<${obj.constructor.name} {${argStr.join(", ")}}>`;
+					return `<${constructorName} {${argStr.join(", ")}}>`;
 			}
 			return;
 			function toString(value, nesting) {
+				if (value == null) {
+					return value;
+				}
 				if (Jasc.isAssociative(value)) {
-					if (nesting <= 1) {
+					if (nesting <= 0) {
 						return "[...]";
 					}
 					const list = [];
@@ -3364,7 +3741,8 @@ class Andesine {
 						list.push(`${key}: ${toString(value[key], nesting - 1)}`);
 					}
 					return `{${list.join(", ")}}`;
-				} else if (Array.isArray(value)) {
+				}
+				if (Array.isArray(value)) {
 					if (nesting <= 1) {
 						return "[...]";
 					}
@@ -3373,15 +3751,15 @@ class Andesine {
 						list.push(toString(value[i], nesting - 1));
 					}
 					return `[${list.join(", ")}]`;
-				} else if (value.toString) {
+				}
+				if (value.toString) {
 					if (Jasc.isNativeCode(value.toString)) {
 						return value.toString();
-					} else {
-						if (nesting <= 0) {
-							return "[...]";
-						}
-						return value.toString(nesting - 1);
 					}
+					if (nesting <= 0) {
+						return "[...]";
+					}
+					return value.toString(nesting - 1);
 				}
 				return value;
 			}

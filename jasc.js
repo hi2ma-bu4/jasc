@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.3
+// jasc.js Ver.1.14.4
 
 /*
 ! ！！注意！！
@@ -2817,14 +2817,17 @@ class Jasc {
 			}
 			switch (eventType) {
 				case "touchstart":
+					elem.addEventListener("pointerdown", _dispatch, false);
 					elem.addEventListener("mousedown", _dispatch, false);
 					elem.addEventListener("touchstart", _dispatch, false);
 					break;
 				case "touchmove":
+					elem.addEventListener("pointermove", _dispatch, false);
 					elem.addEventListener("mousemove", _dispatch, false);
 					elem.addEventListener("touchmove", _dispatch, false);
 					break;
 				case "touchend":
+					elem.addEventListener("pointerup", _dispatch, false);
 					elem.addEventListener("mouseup", _dispatch, false);
 					elem.addEventListener("touchend", _dispatch, false);
 					break;
@@ -2846,8 +2849,12 @@ class Jasc {
 			case "touchmove":
 			case "touchend":
 				return function (e) {
+					e.preventDefault();
 					const ret = [];
-					if (e.changedTouches) {
+					if (e.pointerType) {
+						// pointerイベント
+						ret.push(setDict(e, e.pointerType));
+					} else if (e.changedTouches) {
 						// touchイベント
 						for (const touch of e.changedTouches) {
 							ret.push(setDict(touch, "touch"));

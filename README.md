@@ -1,11 +1,35 @@
-## jasc.js
+# jasc.js
+
+![GitHub License](https://img.shields.io/github/license/hi2ma-bu4/jasc)
+![GitHub Release](https://img.shields.io/github/v/release/hi2ma-bu4/jasc)
+![GitHub Tag](https://img.shields.io/github/v/tag/hi2ma-bu4/jasc?label=newest)
+![jsDelivr hits (GitHub)](https://img.shields.io/jsdelivr/gh/hy/hi2ma-bu4/jasc?logo=jsdelivr&logoColor=%23fff)
+
+![GitHub repo size](https://img.shields.io/github/repo-size/hi2ma-bu4/jasc)
+![GitHub file size in bytes](https://img.shields.io/github/size/hi2ma-bu4/jasc/jasc.js?label=jasc.js)
+
+
+
+
 
 汎用私的ライブラリです。
 
 > CDNのURL
 > ```
-> https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
+> https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.js
 > ```
+
+### 内包ライブラリ
+* beryl
+  * 圧縮
+* zircon
+  * 暗号化
+* gitrine
+  * localStorage
+* kunzite
+  * md -> html
+* andesine
+  * ゲーム
 
 ### 以下のファイルは著作権に注意
 * `jascLib/berylLib/cheep-compressor.min.js`
