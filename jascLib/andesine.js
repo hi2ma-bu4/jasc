@@ -619,7 +619,7 @@ class Andesine {
 		/**
 		 * 2点間の角度
 		 * @param {InstanceType<typeof Andesine.Vector2>} v - 対象ベクトル
-		 * @returns {number}
+		 * @returns {number} 角度(ラジアン)
 		 */
 		angle(v) {
 			return Math.atan2(this.#y - v.y, this.#x - v.x);
@@ -628,12 +628,57 @@ class Andesine {
 		 * 2点間の角度
 		 * @param {InstanceType<typeof Andesine.Vector2>} v1 - 1つ目のベクトル
 		 * @param {InstanceType<typeof Andesine.Vector2>} v2 - 2つ目のベクトル
-		 * @returns {number}
+		 * @returns {number} 角度(ラジアン)
 		 * @static
 		 */
 		static angle(v1, v2) {
 			return v1.angle(v2);
 		}
+
+		/**
+		 * 距離と角度から座標を求める
+		 * @param {number} distance - 距離
+		 * @param {number} angle - 角度
+		 * @returns {InstanceType<typeof Andesine.Vector2>} 座標
+		 */
+		angle2coord(distance, angle) {
+			return new Andesine.Vector2(this.#x + distance * Math.cos(angle), this.#y + distance * Math.sin(angle));
+		}
+
+		/**
+		 * 距離と角度から座標を求める
+		 * @param {InstanceType<typeof Andesine.Vector2>} v - 対象ベクトル
+		 * @param {number} distance - 距離
+		 * @param {number} angle - 角度
+		 * @returns {InstanceType<typeof Andesine.Vector2>} 座標
+		 * @static
+		 */
+		static angle2coord(v, distance, angle) {
+			return v.angle2coord(distance, angle);
+		}
+
+		/**
+		 * 角度ありの座標の足し算
+		 * @param {InstanceType<typeof Andesine.Vector2>} v - 対象ベクトル
+		 * @param {number} angle - 角度
+		 * @returns {InstanceType<typeof Andesine.Vector2>} 座標
+		 */
+		rotate2coord(v, angle) {
+			return new Andesine.Vector2(this.#x + v.x * Math.cos(angle) - v.y * Math.sin(angle), this.#y + v.x * Math.sin(angle) + v.y * Math.cos(angle));
+		}
+
+		/**
+		 * 角度ありの座標の足し算
+		 * @param {InstanceType<typeof Andesine.Vector2>} v1 - 1つ目のベクトル
+		 * @param {InstanceType<typeof Andesine.Vector2>} v2 - 2つ目のベクトル
+		 * @param {number} angle - 角度
+		 * @returns {InstanceType<typeof Andesine.Vector2>} 座標
+		 * @static
+		 */
+		static rotate2coord(v1, v2, angle) {
+			return v1.rotate2coord(v2, angle);
+		}
+
 		/**
 		 * 2点は平行か(誤差非許容)
 		 * @param {InstanceType<typeof Andesine.Vector2>} v1 - 1つ目のベクトル
@@ -1946,6 +1991,7 @@ class Andesine {
 		#_layerList = [];
 		#_layer = 0;
 		#_alpha = 1;
+		#_angle = 0;
 
 		isDestroy = false;
 		isHidden = false;
@@ -2059,6 +2105,35 @@ class Andesine {
 		}
 
 		/**
+		 * 角度を取得する
+		 * @returns {number}
+		 * @readonly
+		 */
+		get angle() {
+			return this.#_angle;
+		}
+
+		/**
+		 * 角度を設定する
+		 * @param {number} angle_ - 角度
+		 */
+		set angle(angle_) {
+			if (typeof angle_ !== "number") {
+				throw new Error("角度は数値で指定して下さい。");
+			}
+			this.#_angle = angle_;
+		}
+
+		/**
+		 * 画面描画時の角度
+		 * @returns {number}
+		 * @readonly
+		 */
+		get displayAngle() {
+			return this.#_angle + (this.#_parent?.displayAngle ?? 0);
+		}
+
+		/**
 		 * 文字列で返却
 		 * @param {number} [nesting] - 表示階層
 		 * @returns {string}
@@ -2138,7 +2213,10 @@ class Andesine {
 			if (!isDraw || this.isHidden) {
 				return;
 			}
+			const ctx = this.ctx;
+			ctx.save();
 			this.draw();
+			ctx.restore();
 			for (let i = 0, li = this.#_layerList.length; i < li; i++) {
 				this.#_children[this.#_layerList[i]]._systemDraw(isDraw);
 			}
@@ -2372,6 +2450,7 @@ class Andesine {
 	 * @param {Andesine.Vector2} [opt.size] - サイズ
 	 * @param {string} [opt.bg=""] - 背景色
 	 * @param {number | "max"} [opt.radius=0] - 丸角
+	 * @param {number} [opt.angle=0] - 角度
 	 * @param {string} [opt.boxAlign="left"] - 描画起点位置
 	 * @param {string} [opt.boxBaseLine="top"] - 描画起点位置
 	 * @param {number} [opt.alpha=1] - 透明度
@@ -2391,6 +2470,7 @@ class Andesine {
 	 * @param {Andesine.Vector2} [opt.size] - サイズ
 	 * @param {string} [opt.bg=""] - 背景色
 	 * @param {number | "max"} [opt.radius=0] - 丸角
+	 * @param {number} [opt.angle=0] - 角度
 	 * @param {string} [opt.boxAlign="left"] - 描画起点位置
 	 * @param {string} [opt.boxBaseLine="top"] - 描画起点位置
 	 * @param {number} [opt.alpha=1] - 透明度
@@ -2399,7 +2479,7 @@ class Andesine {
 	static Box = class extends Andesine.DrawObject {
 		_animationObj;
 
-		constructor({ ctx, layer = 0, position = Andesine.Vector2.zero, size = Andesine.Vector2.zero, bg = "", radius = 0, boxAlign = "left", boxBaseLine = "top", alpha = 1 } = {}) {
+		constructor({ ctx, layer = 0, position = Andesine.Vector2.zero, size = Andesine.Vector2.zero, bg = "", radius = 0, angle = 0, boxAlign = "left", boxBaseLine = "top", alpha = 1 } = {}) {
 			super({ ctx, layer });
 			this.setting = {
 				size,
@@ -2407,6 +2487,7 @@ class Andesine {
 			this.rect = new Andesine.Rectangle(position, this._updateSize(false));
 			this.bg = bg;
 			this.radius = radius;
+			this.angle = angle;
 			this.boxAlign = boxAlign;
 			this.boxBaseLine = boxBaseLine;
 			this.alpha = alpha;
@@ -2452,6 +2533,12 @@ class Andesine {
 			if (setting.globalAlpha == 0) {
 				return true;
 			}
+
+			const centerPos = this.getCenter();
+			ctx.translate(...centerPos.array);
+			ctx.rotate(this.displayAngle);
+			ctx.translate(...centerPos.inverse.array);
+
 			let rad = this.radius;
 			if (rad === "max") {
 				rad = Math.min(this.rect.width, this.rect.height) / 2;
@@ -2478,7 +2565,8 @@ class Andesine {
 			if (this.parent) {
 				const v1 = this.parent.relative();
 				const v2 = this.rect.position;
-				pos = Andesine.Vector2.add(v1, v2);
+				pos = v1.rotate2coord(v2, this.displayAngle);
+				//pos = Andesine.Vector2.add(v1, v2);
 			} else {
 				pos = this.rect.position.clone();
 			}
@@ -2506,6 +2594,15 @@ class Andesine {
 					break;
 			}
 			return pos;
+		}
+
+		/**
+		 * 中心座標を取得
+		 * @returns {InstanceType<typeof Andesine.Vector2>}
+		 */
+		getCenter() {
+			const pos = this.relative();
+			return Andesine.Vector2.add(pos, this.rect.size / 2n);
 		}
 
 		/**
@@ -2589,20 +2686,24 @@ class Andesine {
 		/**
 		 * 移動アニメーション
 		 * @param {object} [opt] - オプション
-		 * @param {Andesine.Vector2} [opt.end=Andesine.Vector2.zero] - 終了座標
-		 * @param {number} [opt.flameTime=60] - 所要フレーム数
+		 * @param {Andesine.Vector2 | null} [opt.position=null] - 終了座標(任意)
+		 * @param {Andesine.Vector2 | null} [opt.size=null] - 終了サイズ(任意)
+		 * @param {number | null} [opt.angle=null] - 終了角度(任意)
+		 * @param {number} [opt.frameTime=60] - 所要フレーム数
 		 * @param {string} [opt.type="smooth"] - アニメーションタイプ (smooth | leap)
 		 * @returns {Promise<InstanceType<typeof Andesine.Box>>}
 		 */
-		moveAnimation({ end = Andesine.Vector2.zero, flameTime = 60, type = "smooth" }) {
+		createAnimation({ position = null, size = null, angle = null, frameTime = 60, type = "smooth" }) {
 			if (this._animationObj) {
 				this._animationObj.stop(true);
 			}
 			return new Promise((resolve) => {
 				const _this = this;
 				this._animationObj = new Andesine.Animation(this, {
-					end,
-					flameTime,
+					position,
+					size,
+					angle,
+					frameTime,
 					type,
 					callback() {
 						resolve(_this);
@@ -2626,6 +2727,15 @@ class Andesine {
 					resolve(this);
 				}
 			});
+		}
+
+		/**
+		 * アニメーションオブジェクトを取得
+		 * @returns {InstanceType<typeof Andesine.Animation> | null}
+		 * @readonly
+		 */
+		get animation() {
+			return this._animationObj;
 		}
 	};
 
@@ -2740,6 +2850,7 @@ class Andesine {
 	 * @param {string} [opt.fg="#000"] - 文字色
 	 * @param {string} [opt.bg=""] - 背景色
 	 * @param {number | "max"} [opt.radius=0] - 丸角
+	 * @param {number} [opt.angle=0] - 角度
 	 * @param {string} [opt.align="left"] - テキストの配置
 	 * @param {number} [opt.lineHeight=0] - 行間
 	 * @param {string} [opt.boxAlign="left"] - 描画起点位置
@@ -2764,6 +2875,7 @@ class Andesine {
 	 * @param {string} [opt.fg="#000"] - 文字色
 	 * @param {string} [opt.bg=""] - 背景色
 	 * @param {number | "max"} [opt.radius=0] - 丸角
+	 * @param {number} [opt.angle=0] - 角度
 	 * @param {string} [opt.align="left"] - テキストの配置
 	 * @param {number} [opt.lineHeight=0] - 行間
 	 * @param {string} [opt.boxAlign="left"] - 描画起点位置
@@ -2772,8 +2884,8 @@ class Andesine {
 	 * @returns {Andesine.TextBox}
 	 */
 	static TextBox = class extends Andesine.Box {
-		constructor({ ctx, layer = 0, position = Andesine.Vector2.zero, size = Andesine.Vector2.zero, text = "", fg = "#000", bg = "", radius = 0, align = "left", lineHeight = 0, boxAlign = "left", boxBaseLine = "top", alpha = 1 }) {
-			super({ ctx, layer, position, size, bg, radius, boxAlign, boxBaseLine, alpha });
+		constructor({ ctx, layer = 0, position = Andesine.Vector2.zero, size = Andesine.Vector2.zero, text = "", fg = "#000", bg = "", radius = 0, angle = 0, align = "left", lineHeight = 0, boxAlign = "left", boxBaseLine = "top", alpha = 1 }) {
+			super({ ctx, layer, position, size, bg, radius, angle, boxAlign, boxBaseLine, alpha });
 			this.text = text;
 			this.fg = fg;
 			this.align = align;
@@ -2943,8 +3055,10 @@ class Andesine {
 	 * @memberof Andesine
 	 * @param  {InstanceType<typeof Andesine.DrawObject>} _this - 対象オブジェクト
 	 * @param  {object} [opt] - オプション
-	 * @param  {Andesine.Vector2} [opt.end=Andesine.Vector2.zero] - 終了座標
-	 * @param  {number} [opt.flameTime=60] - 所要フレーム数
+	 * @param  {Andesine.Vector2 | null} [opt.position=null] - 終了座標(任意)
+	 * @param  {Andesine.Vector2 | null} [opt.size=null] - 終了サイズ(任意)
+	 * @param  {number | null} [opt.angle=null] - 終了角度(任意)
+	 * @param  {number} [opt.frameTime=60] - 所要フレーム数
 	 * @param  {string} [opt.type="smooth"] - アニメーションタイプ (smooth | leap)
 	 * @param  {function} [opt.callback] - 終了時コールバック
 	 * @returns {Andesine.Animation}
@@ -2956,20 +3070,25 @@ class Andesine {
 		objType = null;
 		nowFrame = 0;
 
-		constructor(_this, { end = Andesine.Vector2.zero, flameTime = 60, type = "smooth", callback } = {}) {
+		constructor(_this, { position = null, size = null, angle = null, frameTime = 60, type = "smooth", callback } = {}) {
 			this.animObj = _this;
 			if (this.animObj instanceof Andesine.Box) {
 				this.objType = "box";
 			}
 			switch (this.objType) {
 				case "box":
-					this.start = this.animObj.rect.position.clone();
+					this.startPosition = this.animObj.rect.position.clone();
+					this.startSize = this.animObj.rect.size.clone();
 					break;
 				default:
-					this.start = Andesine.Vector2.zero;
+					this.startPosition = Andesine.Vector2.zero;
+					this.startSize = Andesine.Vector2.zero;
 			}
-			this.end = end;
-			this.flameTime = flameTime;
+			this.position = position;
+			this.size = size;
+			this.angle = angle;
+			this.startAngle = this.animObj.angle;
+			this.frameTime = frameTime;
 			this.type = type;
 			this.#callback = callback;
 		}
@@ -2982,26 +3101,58 @@ class Andesine {
 			if (this.isDestroy) {
 				return;
 			}
-			if (this.nowFrame >= this.flameTime) {
+			if (this.nowFrame >= this.frameTime) {
 				this.nowFrame = -Infinity;
 				this.isDestroy = true;
 				this.#_finish();
 				return;
 			}
-			const t = this.nowFrame / this.flameTime;
+			const t = this.nowFrame / this.frameTime;
 			let pos = null;
-			switch (this.type) {
-				case "smooth":
-					pos = Andesine.Vector2.smoothDamp(this.start, this.end, t);
-					break;
-				case "leap":
-					pos = Andesine.Vector2.leap(this.start, this.end, t);
-					break;
+			if (this.position != null) {
+				switch (this.type) {
+					case "smooth":
+						pos = Andesine.Vector2.smoothDamp(this.startPosition, this.position, t);
+						break;
+					case "leap":
+						pos = Andesine.Vector2.leap(this.startPosition, this.position, t);
+						break;
+				}
+				switch (this.objType) {
+					case "box":
+						this.animObj.rect.position.set(pos);
+						break;
+				}
+			} else {
+				pos = this.animObj.rect.position.clone();
 			}
-			switch (this.objType) {
-				case "box":
-					this.animObj.rect.position.set(pos);
-					break;
+			if (this.size != null) {
+				let size;
+				switch (this.type) {
+					case "smooth":
+						size = Andesine.Vector2.smoothDamp(this.startSize, this.size, t);
+						break;
+					case "leap":
+						size = Andesine.Vector2.leap(this.startSize, this.size, t);
+						break;
+				}
+				switch (this.objType) {
+					case "box":
+						this.animObj.rect.size.set(size);
+						break;
+				}
+			}
+			if (this.angle != null) {
+				let angle = 0;
+				switch (this.type) {
+					case "smooth":
+						angle = Jasc.animationSmoothDamp(this.startAngle, this.angle, t);
+						break;
+					case "leap":
+						angle = Jasc.animationLeap(this.startAngle, this.angle, t);
+						break;
+				}
+				this.animObj.angle = angle;
 			}
 			this.nowFrame++;
 			return pos;
@@ -3043,10 +3194,15 @@ class Andesine {
 		 * 終了時処理
 		 */
 		#_finish() {
-			switch (this.objType) {
-				case "box":
-					this.animObj.rect.position.set(this.end);
-					break;
+			if (this.position != null) {
+				switch (this.objType) {
+					case "box":
+						this.animObj.rect.position.set(this.position);
+						break;
+				}
+			}
+			if (this.angle != null) {
+				this.animObj.angle = this.angle;
 			}
 
 			this.#callback?.();
@@ -3125,12 +3281,12 @@ class Andesine {
 			if (this.#_isThisEnable != null) {
 				return this.#_isThisEnable;
 			}
+			this.#_isThisEnable = false;
 			for (let i = 0, li = this.#_deepList.length; i < li; i++) {
 				if (this.#_deepList[i] == 0) {
 					this.#_isThisEnable = true;
 				}
 			}
-			this.#_isThisEnable = false;
 			return this.#_isThisEnable;
 		}
 

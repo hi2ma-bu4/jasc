@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.4
+// jasc.js Ver.1.14.5
 
 /*
 ! ！！注意！！
@@ -2786,14 +2786,17 @@ class Jasc {
 			if (obj) {
 				switch (eventType) {
 					case "touchstart":
+						elem.removeEventListener("pointerdown", obj.callback, false);
 						elem.removeEventListener("mousedown", obj.callback, false);
 						elem.removeEventListener("touchstart", obj.callback, false);
 						break;
 					case "touchmove":
+						elem.removeEventListener("pointermove", obj.callback, false);
 						elem.removeEventListener("mousemove", obj.callback, false);
 						elem.removeEventListener("touchmove", obj.callback, false);
 						break;
 					case "touchend":
+						elem.removeEventListener("pointerup", obj.callback, false);
 						elem.removeEventListener("mouseup", obj.callback, false);
 						elem.removeEventListener("touchend", obj.callback, false);
 						break;
@@ -2805,11 +2808,12 @@ class Jasc {
 			}
 		} else {
 			// 登録
-			const _dispatch = this._dispatchExEvent(eventType, callback);
 			const obj = {
-				callback: _dispatch,
 				elem: elem,
+				isActive: false,
 			};
+			const _dispatch = this._dispatchExEvent(eventType, callback, obj);
+			obj.callback = _dispatch;
 			if (name === "") {
 				name = jasc.setAssociativeAutoName(this.#jasc_exEvents[eventType], obj, "__jasc");
 			} else {
@@ -2841,15 +2845,24 @@ class Jasc {
 	 * イベントリスナー拡張 発火
 	 * @param {string} eventType - イベントタイプ
 	 * @param {function} callback - イベントのコールバック関数
+	 * @param {object} obj - イベントオブジェクト
 	 * @returns {function} - イベントのコールバック関数
 	 */
-	_dispatchExEvent = function (eventType, callback) {
+	_dispatchExEvent = function (eventType, callback, obj) {
+		const o = obj;
 		switch (eventType) {
 			case "touchstart":
 			case "touchmove":
 			case "touchend":
 				return function (e) {
-					e.preventDefault();
+					if (o.isActive) {
+						return;
+					}
+					o.isActive = true;
+					setTimeout(function () {
+						o.isActive = false;
+					}, 0);
+
 					const ret = [];
 					if (e.pointerType) {
 						// pointerイベント
@@ -4251,6 +4264,46 @@ class Jasc {
 	 * @returns {array} 分割結果
 	 */
 	chunkDivide = Jasc.chunkDivide;
+
+	/**
+	 * 線形補間
+	 * @param {number} start - 開始
+	 * @param {number} end - 終了
+	 * @param {number} t - 時間(0~1)
+	 * @returns {number} 結果
+	 */
+	static animationLeap(start, end, t) {
+		return start + (end - start) * t;
+	}
+	/**
+	 * 線形補間
+	 * @param {number} start - 開始
+	 * @param {number} end - 終了
+	 * @param {number} t - 時間(0~1)
+	 * @returns {number} 結果
+	 * @static
+	 */
+	animationLeap = Jasc.animationLeap;
+
+	/**
+	 * 滑らかな線形補間
+	 * @param {number} start - 開始
+	 * @param {number} end - 終了
+	 * @param {number} t - 時間(0~1)
+	 * @returns {number} 結果
+	 */
+	static animationSmoothDamp(start, end, t) {
+		return Jasc.animationLeap(start, end, -(Math.cos(Math.PI * t) - 1) / 2);
+	}
+	/**
+	 * 滑らかな線形補間
+	 * @param {number} start - 開始
+	 * @param {number} end - 終了
+	 * @param {number} t - 時間(0~1)
+	 * @returns {number} 結果
+	 * @static
+	 */
+	animationSmoothDamp = Jasc.animationSmoothDamp;
 
 	//======================
 	// ファイル
