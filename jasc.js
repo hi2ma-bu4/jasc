@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.5
+// jasc.js Ver.1.14.6
 
 /*
 ! ！！注意！！
@@ -246,8 +246,8 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 *- 動的変更
 * pressKeySet					//現在の押下キー
 *- ゲームエンジン動作時
-* isDrawing						//描画可能か
-* doFps							//現在のFPS
+* game.isDrawing						//描画可能か
+* game.doFps							//現在のFPS
 * game._canvas					//ゲームに使用されているcanvas
 * game.ctx						//ゲームに使用されているctx
 
@@ -352,11 +352,6 @@ class Jasc {
 		[/^504746/, "pgf"], //!未検証
 		[/^89504e47/, "png"],
 		[/^38425053/, "psd"], //!未検証
-		/*
-			svgのやつはマジックナンバーではなくただの宣言文字
-			そもそもsvgはテキストファイル
-		*/
-		[/^(.{2}){0,4}3c3f786d6c/, "svg"],
 		[/^4d4d002a/, "tiff_big"], //!未検証
 		[/^49492a00/, "tiff_little"], //!未検証
 		[/^524946460{8}57454250/, "webp"], //!未検証
@@ -380,7 +375,11 @@ class Jasc {
 		[/^0{6}(18667479706d703432000000|206674797069736f6d000002)00/, "mp4"], //!検証数2
 		[/^3026b2758e66cf11a6d900aa0062ce6c/, "wmv"], //!未検証
 		// 圧縮(アーカイブ)
+		[/^377abcaf271c/, "7z"],
+		[/^425a68/, "bz2"],
 		[/^1f8b/, "gzip"],
+		[/^(4d535749|574c5057)4d000/, "wim"],
+		[/^fd377a585a00/, "xz"],
 		[/^504b0304/, "zip"],
 		// フォントファイル
 		[/^97140100b11301/, "eot"], //!検証数1
@@ -400,6 +399,11 @@ class Jasc {
 		[/^255044462d/, "pdf"],
 		[/^d0cf11e0a1b11ae1/, "ppt"],
 		[/^7b5c727466/, "rtf"], //!検証数1,
+		/*
+			xmlのやつはマジックナンバーではなくただの宣言文字
+			そもそもxmlはテキストファイル
+		*/
+		[/^(.{2}){0,4}3c3f786d6c/, "xml"],
 		[/^d0cf11e0a1b11ae1/, "xls"],
 	];
 	// 拡張子に対応するmimeタイプ
@@ -483,6 +487,8 @@ class Jasc {
 		gz: ["application/gzip", "application/x-gzip"],
 		rar: ["application/vnd.rar", "application/x-rar-compressed", "application/x-rar"],
 		tar: "application/x-tar",
+		wim: "application/x-ms-wim",
+		xz: "application/x-xz",
 		zip: "application/zip",
 		// フォントファイル
 		eot: "application/vnd.ms-fontobject",
@@ -691,6 +697,9 @@ class Jasc {
 		nowFps: 0,
 		doFps: 0,
 
+		isDrawing: true,
+		isOverFrame: false,
+
 		frame_avgTime: 0,
 		frame_minTime: 0,
 		frame_maxTime: 0,
@@ -751,8 +760,6 @@ class Jasc {
 
 	#jasc_readonlyData = {
 		pressKeySet: new Set(),
-
-		isDrawing: true,
 
 		// ゲッター群
 		get urlQuery() {
@@ -1822,11 +1829,15 @@ class Jasc {
 			if (cou > this.#jasc_settingData.BBFCapacity) {
 				this.#_fps_BBForward = cou - this.#jasc_settingData.BBFCapacity;
 				cou = this.#jasc_settingData.BBFCapacity;
+				if (this.#_fps_BBForward > 30) {
+					this.#jasc_gameData.isOverFrame = true;
+				}
 				if (this.#_fps_BBForward > 50) {
 					this.#_fps_BBForward = 50;
 				}
 			} else {
 				this.#_fps_BBForward = 0;
+				this.#jasc_gameData.isOverFrame = false;
 			}
 
 			this.#jasc_gameData.isDrawing = false;
@@ -4200,7 +4211,7 @@ class Jasc {
 			return [];
 		}
 		const arr = new Array(cou);
-		const initialNum = Math.floor(val / cou);
+		const initialNum = (val / cou) | 0;
 		const remainder = val % cou;
 		for (let i = 0; i < cou; i++) {
 			arr[i] = initialNum + (i < remainder ? 1 : 0);
@@ -4434,7 +4445,7 @@ class Jasc {
 				for (let i = 0, li = arr.length; i < li; i++) {
 					header += ("0" + arr[i].toString(16)).slice(-2);
 				}
-
+				//console.log(header);
 				// マジックナンバー比較
 				let ret = [];
 				for (let data of Jasc.#_FILETYPE_REG_LIST) {
@@ -5116,72 +5127,91 @@ class Jasc {
 	 * @static
 	 */
 	static AssetsManager = class {
-		#promises = [];
+		#url2Map = new Map();
 		#imageMap = new Map();
+
 		constructor(urls = {}) {
 			//URLを追加
 			for (const [name, url] of Object.entries(urls)) {
 				this.add(name, url);
 			}
 		}
+
 		/**
 		 * 画像追加
-		 * @param {string} name - 画像呼び出し名
-		 * @param {string} url - 画像URL
-		 * @returns {undefined}
+		 * @param {object} [opt] - オプション
+		 * @param {string} [name] - 画像呼び出し名
+		 * @param {string} [url] - 画像URL
+		 * @returns {Promise<Image>}
 		 */
-		add(name, url) {
-			const img = new Image();
-			this.#promises.push(
-				new Promise((resolve, reject) => {
-					img.addEventListener("load", () => {
-						this.#imageMap.set(name, img);
-						resolve();
-					});
-					img.addEventListener("error", (e) => {
-						this.#imageMap.set(name, null);
-						reject(e);
-					});
-				})
-			);
-			img.src = url;
+		getImage({ name = "", url = "" }) {
+			const obj = {
+				isLoad: false,
+				img: null,
+			};
+			const pro = new Promise((resolve, reject) => {
+				if (url && this.#url2Map.has(url)) {
+					name = this.#url2Map.get(url);
+				}
+				if (name) {
+					if (this.#imageMap.has(name)) {
+						const _obj = this.#imageMap.get(name);
+						if (_obj.isLoad) {
+							resolve(_obj.img);
+						} else {
+							_obj.pro.then(() => resolve(_obj.img));
+						}
+						return;
+					}
+				} else if (url) {
+					name = url;
+				}
+				if (!url) {
+					reject("No URL");
+					return;
+				}
+				this.#url2Map.set(url, name);
+
+				const img = new Image();
+				img.onload = () => {
+					img.onload = img.onerror = null;
+					obj.isLoad = true;
+					resolve(obj.img);
+				};
+				img.onerror = (e) => {
+					img.onload = img.onerror = null;
+					this.#imageMap.delete(name);
+					reject(e);
+				};
+				obj.img = img;
+				this.#imageMap.set(name, obj);
+				img.src = url;
+			});
+			obj.pro = pro;
+			return pro;
 		}
+
 		/**
 		 * キャッシュ追加
+		 * @param {HTMLImageElement} data - 画像
 		 * @param {string} name - 画像呼び出し名
-		 * @param {HTMLImageElement} img - 画像
 		 * @returns {undefined}
 		 */
-		addCache(name, img) {
-			this.#imageMap.set(name, img);
+		addCache(data, name) {
+			if (data instanceof HTMLImageElement) {
+				this.#imageMap.set(name, data);
+			}
 		}
 		/**
-		 * 画像読み込み
-		 * @returns {Promise<Map<string, HTMLImageElement>>}
-		 */
-		load() {
-			return Promise.all(this.#promises).then(() => {
-				return this.#imageMap;
-			});
-		}
-		/**
-		 * 画像取得
-		 * @param {string} name - 画像呼び出し名
-		 * @returns {HTMLImageElement}
-		 */
-		get(name) {
-			return this.#imageMap.get(name);
-		}
-		/**
-		 * 画像削除
-		 * @param {string} name - 画像呼び出し名
+		 * アセット削除
+		 * @param {string} name - アセット呼び出し名
 		 * @returns {undefined}
 		 */
 		del(name) {
 			this.#imageMap.delete(name);
 		}
 		/**
-		 * 画像全削除
+		 * アセット全削除
 		 * @returns {undefined}
 		 */
 		clear() {

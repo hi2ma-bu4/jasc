@@ -26,6 +26,8 @@ class Andesine {
 	static _B_MIN = Number(-this._B_CARRY + 1n) / this._B_FRACT;
 	static _B_MAX = Number(this._B_CARRY - 1n) / this._B_FRACT;
 
+	static _ERROR_COLOR = "#FF00FFD0";
+
 	// ####################################################################################################
 
 	/**
@@ -422,6 +424,20 @@ class Andesine {
 		}
 
 		/**
+		 * ベクトルの合計
+		 * @param {InstanceType<typeof Andesine.Vector2>[]} vec - 対象ベクトル
+		 * @returns {InstanceType<typeof Andesine.Vector2>}
+		 * @static
+		 */
+		static sum(...vec) {
+			const v = new Andesine.Vector2();
+			for (let i = 0, li = vec.length; i < li; i++) {
+				v.add(vec[i]);
+			}
+			return v;
+		}
+
+		/**
 		 * ベクトルの内積
 		 * @param {InstanceType<typeof Andesine.Vector2>} v - 対象ベクトル
 		 * @returns {number}
@@ -658,25 +674,23 @@ class Andesine {
 		}
 
 		/**
-		 * 角度ありの座標の足し算
-		 * @param {InstanceType<typeof Andesine.Vector2>} v - 対象ベクトル
+		 * 回転行列
 		 * @param {number} angle - 角度
 		 * @returns {InstanceType<typeof Andesine.Vector2>} 座標
 		 */
-		rotate2coord(v, angle) {
-			return new Andesine.Vector2(this.#x + v.x * Math.cos(angle) - v.y * Math.sin(angle), this.#y + v.x * Math.sin(angle) + v.y * Math.cos(angle));
+		matrix(angle) {
+			return new Andesine.Vector2(this.#x * Math.cos(angle) - this.#y * Math.sin(angle), this.#x * Math.sin(angle) + this.#y * Math.cos(angle));
 		}
 
 		/**
-		 * 角度ありの座標の足し算
-		 * @param {InstanceType<typeof Andesine.Vector2>} v1 - 1つ目のベクトル
-		 * @param {InstanceType<typeof Andesine.Vector2>} v2 - 2つ目のベクトル
+		 * 回転行列
+		 * @param {InstanceType<typeof Andesine.Vector2>} v - ベクトル
 		 * @param {number} angle - 角度
 		 * @returns {InstanceType<typeof Andesine.Vector2>} 座標
 		 * @static
 		 */
-		static rotate2coord(v1, v2, angle) {
-			return v1.rotate2coord(v2, angle);
+		static matrix(v, angle) {
+			return v.matrix(angle);
 		}
 
 		/**
@@ -1351,6 +1365,21 @@ class Andesine {
 		}
 
 		/**
+		 * ベクトルの合計
+		 * @param {InstanceType<typeof Andesine.Vector2>[]} vec - 対象ベクトル
+		 * @returns {InstanceType<typeof Andesine.Vector3>}
+		 * @static
+		 * @override
+		 */
+		static sum(...vec) {
+			const v = new Andesine.Vector3();
+			for (let i = 0, li = vec.length; i < li; i++) {
+				v.add(vec[i]);
+			}
+			return v;
+		}
+
+		/**
 		 * ベクトルの内積
 		 * @param {InstanceType<typeof Andesine.Vector3>} v - 対象ベクトル
 		 * @returns {number}
@@ -1986,6 +2015,7 @@ class Andesine {
 	 * @abstract
 	 */
 	static DrawObject = class extends Andesine.EventDispatcher {
+		#_manager = null;
 		#_parent = null;
 		#_children = {};
 		#_layerList = [];
@@ -2019,6 +2049,28 @@ class Andesine {
 			}
 			this._ctx = ctx;
 			this.layer = layer;
+		}
+
+		/**
+		 * ゲームマネージャーを取得する
+		 * @returns {InstanceType<typeof Andesine.GameManager>}
+		 * @readonly
+		 */
+		get manager() {
+			if (!this.#_manager && this.parent) {
+				this.#_manager = this.parent.manager;
+			}
+			return this.#_manager;
+		}
+
+		/**
+		 * ゲームマネージャーを設定する
+		 * @param {InstanceType<typeof Andesine.GameManager>} manager
+		 */
+		set manager(manager) {
+			if (manager instanceof Andesine.GameManager) {
+				this.#_manager = manager;
+			}
 		}
 
 		/**
@@ -2451,8 +2503,8 @@ class Andesine {
 	 * @param {string} [opt.bg=""] - 背景色
 	 * @param {number | "max"} [opt.radius=0] - 丸角
 	 * @param {number} [opt.angle=0] - 角度
-	 * @param {string} [opt.boxAlign="left"] - 描画起点位置
-	 * @param {string} [opt.boxBaseLine="top"] - 描画起点位置
+	 * @param {"left" | "center" | "right"} [opt.boxAlign="left"] - 描画起点位置
+	 * @param {"top" | "middle" | "bottom"} [opt.boxBaseLine="top"] - 描画起点位置
 	 * @param {number} [opt.alpha=1] - 透明度
 	 * @returns {InstanceType<typeof Andesine.Box>}
 	 * @static
@@ -2471,8 +2523,8 @@ class Andesine {
 	 * @param {string} [opt.bg=""] - 背景色
 	 * @param {number | "max"} [opt.radius=0] - 丸角
 	 * @param {number} [opt.angle=0] - 角度
-	 * @param {string} [opt.boxAlign="left"] - 描画起点位置
-	 * @param {string} [opt.boxBaseLine="top"] - 描画起点位置
+	 * @param {"left" | "center" | "right"} [opt.boxAlign="left"] - 描画起点位置
+	 * @param {"top" | "middle" | "bottom"} [opt.boxBaseLine="top"] - 描画起点位置
 	 * @param {number} [opt.alpha=1] - 透明度
 	 * @returns {Andesine.Box}
 	 */
@@ -2534,10 +2586,17 @@ class Andesine {
 				return true;
 			}
 
-			const centerPos = this.getCenter();
-			ctx.translate(...centerPos.array);
-			ctx.rotate(this.displayAngle);
-			ctx.translate(...centerPos.inverse.array);
+			const angle = this.displayAngle;
+			if (angle != 0) {
+				const centerPos = this.getCenter();
+				ctx.translate(...centerPos.array);
+				ctx.rotate(angle);
+				ctx.translate(...centerPos.inverse.array);
+			}
+
+			if (this.rect.size.eq(Andesine._CACHE_VEC2_ZERO)) {
+				return false;
+			}
 
 			let rad = this.radius;
 			if (rad === "max") {
@@ -2556,6 +2615,20 @@ class Andesine {
 			return false;
 		}
 
+		rotatedPosition() {
+			const parent = this.parent;
+			if (!parent) {
+				throw new Error("parent is null");
+			}
+			const parent_pos = parent.relative();
+			const child_size = Andesine.Vector2.div(this.rect.size, 2);
+
+			const pCenterPos = Andesine.Vector2.add(parent_pos, Andesine.Vector2.div(parent.rect.size, 2));
+			const rotatedPos = Andesine.Vector2.sub(Andesine.Vector2.sum(this.rect.position, parent_pos, child_size), pCenterPos).matrix(parent.displayAngle);
+
+			return rotatedPos.add(pCenterPos).sub(child_size);
+		}
+
 		/**
 		 * 相対的な座標を取得
 		 * @returns {InstanceType<typeof Andesine.Vector2>}
@@ -2563,10 +2636,7 @@ class Andesine {
 		relative() {
 			let pos;
 			if (this.parent) {
-				const v1 = this.parent.relative();
-				const v2 = this.rect.position;
-				pos = v1.rotate2coord(v2, this.displayAngle);
-				//pos = Andesine.Vector2.add(v1, v2);
+				pos = this.rotatedPosition();
 			} else {
 				pos = this.rect.position.clone();
 			}
@@ -2602,7 +2672,7 @@ class Andesine {
 		 */
 		getCenter() {
 			const pos = this.relative();
-			return Andesine.Vector2.add(pos, this.rect.size / 2n);
+			return Andesine.Vector2.div(this.rect.size, 2).add(pos);
 		}
 
 		/**
@@ -2689,11 +2759,12 @@ class Andesine {
 		 * @param {Andesine.Vector2 | null} [opt.position=null] - 終了座標(任意)
 		 * @param {Andesine.Vector2 | null} [opt.size=null] - 終了サイズ(任意)
 		 * @param {number | null} [opt.angle=null] - 終了角度(任意)
+		 * @param  {number | null} [opt.alpha=null] - 終了透明度(任意)
 		 * @param {number} [opt.frameTime=60] - 所要フレーム数
 		 * @param {string} [opt.type="smooth"] - アニメーションタイプ (smooth | leap)
 		 * @returns {Promise<InstanceType<typeof Andesine.Box>>}
 		 */
-		createAnimation({ position = null, size = null, angle = null, frameTime = 60, type = "smooth" }) {
+		createAnimation({ position = null, size = null, angle = null, alpha = null, frameTime = 60, type = "smooth" }) {
 			if (this._animationObj) {
 				this._animationObj.stop(true);
 			}
@@ -2703,6 +2774,7 @@ class Andesine {
 					position,
 					size,
 					angle,
+					alpha,
 					frameTime,
 					type,
 					callback() {
@@ -2799,8 +2871,8 @@ class Andesine {
 	 * @param {Andesine.Vector2} [opt.size] - サイズ
 	 * @param {string} [opt.bg=""] - 背景色
 	 * @param {number | "max"} [opt.radius=0] - 丸角
-	 * @param {string} [opt.boxAlign="left"] - 描画起点位置
-	 * @param {string} [opt.boxBaseLine="top"] - 描画起点位置
+	 * @param {"left" | "center" | "right"} [opt.boxAlign="left"] - 描画起点位置
+	 * @param {"top" | "middle" | "bottom"} [opt.boxBaseLine="top"] - 描画起点位置
 	 * @param {number} [opt.alpha=1] - 透明度
 	 * @returns {Andesine.Frame}
 	 */
@@ -2853,8 +2925,9 @@ class Andesine {
 	 * @param {number} [opt.angle=0] - 角度
 	 * @param {string} [opt.align="left"] - テキストの配置
 	 * @param {number} [opt.lineHeight=0] - 行間
-	 * @param {string} [opt.boxAlign="left"] - 描画起点位置
-	 * @param {string} [opt.boxBaseLine="top"] - 描画起点位置
+	 * @param {"left" | "center" | "right"} [opt.boxAlign="left"] - 描画起点位置
+	 * @param {"top" | "middle" | "bottom"} [opt.boxBaseLine="top"] - 描画起点位置
+	 * @param {"manual" | "auto" | "max" | "none"} [opt.returnType="max"] - 改行の設定
 	 * @param {number} [opt.alpha=1] - 透明度
 	 * @returns {InstanceType<typeof Andesine.TextBox>}
 	 * @static
@@ -2878,18 +2951,20 @@ class Andesine {
 	 * @param {number} [opt.angle=0] - 角度
 	 * @param {string} [opt.align="left"] - テキストの配置
 	 * @param {number} [opt.lineHeight=0] - 行間
-	 * @param {string} [opt.boxAlign="left"] - 描画起点位置
-	 * @param {string} [opt.boxBaseLine="top"] - 描画起点位置
+	 * @param {"left" | "center" | "right"} [opt.boxAlign="left"] - 描画起点位置
+	 * @param {"top" | "middle" | "bottom"} [opt.boxBaseLine="top"] - 描画起点位置
+	 * @param {"manual" | "auto" | "max" | "none"} [opt.returnType="max"] - 改行の設定
 	 * @param {number} [opt.alpha=1] - 透明度
 	 * @returns {Andesine.TextBox}
 	 */
 	static TextBox = class extends Andesine.Box {
-		constructor({ ctx, layer = 0, position = Andesine.Vector2.zero, size = Andesine.Vector2.zero, text = "", fg = "#000", bg = "", radius = 0, angle = 0, align = "left", lineHeight = 0, boxAlign = "left", boxBaseLine = "top", alpha = 1 }) {
+		constructor({ ctx, layer = 0, position = Andesine.Vector2.zero, size = Andesine.Vector2.zero, text = "", fg = "#000", bg = "", radius = 0, angle = 0, align = "left", lineHeight = 0, boxAlign = "left", boxBaseLine = "top", returnType = "max", alpha = 1 }) {
 			super({ ctx, layer, position, size, bg, radius, angle, boxAlign, boxBaseLine, alpha });
 			this.text = text;
 			this.fg = fg;
 			this.align = align;
 			this.lineHeight = lineHeight;
+			this.returnType = returnType;
 		}
 
 		/**
@@ -2916,10 +2991,71 @@ class Andesine {
 			const ctx = this.ctx;
 			const pos = this.relative();
 			ctx.fillStyle = this.fg;
-			Andesine.fixedFillText(ctx, this.text, pos, this.rect.width, this.align, this.lineHeight);
+			switch (this.returnType) {
+				case "manual":
+					// 手動改行
+					Andesine.manualFillText(ctx, this.text, pos, this.rect.width, this.align, this.lineHeight);
+					break;
+				case "auto":
+					// 自動改行
+					Andesine.fixedFillText(ctx, this.text, pos, this.rect.width, this.align, this.lineHeight);
+					break;
+				case "max":
+					// 横幅制限(改行なし)
+					ctx.fillText(this.text, pos.x, pos.y, this.rect.width);
+					break;
+				case "none":
+				default:
+					// 改行なし
+					ctx.fillText(this.text, pos.x, pos.y);
+					break;
+			}
 			return false;
 		}
 	};
+
+	/**
+	 * テキスト内の\nで改行
+	 * @param {CanvasRenderingContext2D} ctx
+	 * @param {string} text
+	 * @param {InstanceType<typeof Andesine.Vector2>} pos
+	 * @param {number} width
+	 * @param {string} [align="left"]
+	 * @param {number} [lineHight=0]
+	 * @static
+	 */
+	static manualFillText(ctx, text, pos, width, align = "left", lineHight = 0) {
+		//Andesine._REGEXP_RETURN
+		const _pos = Andesine.Vector2.convert(pos);
+		ctx.textBaseline = "top";
+		ctx.textAlign = "left";
+
+		const spText = text.split("\n");
+		let padding,
+			_sumLineHight = 0;
+		const base_lineHight = ctx.measureText("あ").actualBoundingBoxDescent;
+		for (let i = 0, li = spText.length; i < li; i++) {
+			const t = spText[i];
+			const textSize = ctx.measureText(t);
+			let addHeight = textSize.actualBoundingBoxDescent;
+			if (t == "") {
+				addHeight = base_lineHight;
+			}
+			_sumLineHight += addHeight + lineHight;
+			if (t == "") {
+				continue;
+			}
+			const lineWidth = textSize.actualBoundingBoxRight;
+			if (align == "right") {
+				padding = width - lineWidth;
+			} else if (align == "center") {
+				padding = (width - lineWidth) / 2;
+			} else {
+				padding = 0;
+			}
+			ctx.fillText(t, _pos.x + padding, _pos.y + _sumLineHight - addHeight);
+		}
+	}
 
 	/**
 	 * テキストを自動改行
@@ -3000,23 +3136,126 @@ class Andesine {
 	 * @param {Andesine.Vector2} [opt.size] - サイズ
 	 * @param {string} [opt.bg=""] - 背景色
 	 * @param {number | "max"} [opt.radius=0] - 丸角
-	 * @param {string} [opt.boxAlign="left"] - 描画起点位置
-	 * @param {string} [opt.boxBaseLine="top"] - 描画起点位置
+	 * @param {"left" | "center" | "right"} [opt.boxAlign="left"] - 描画起点位置
+	 * @param {"top" | "middle" | "bottom"} [opt.boxBaseLine="top"] - 描画起点位置
 	 * @param {number} [opt.alpha=1] - 透明度
+	 * @param {"origin" | "manual" | "max" | "min" | "width" | "height"} [opt.aspectType="width"] - アスペクト比計算方法
+	 * @returns {InstanceType<typeof Andesine.ImageBox>}
+	 */
+	static createImageBox(opt) {
+		return new Andesine.ImageBox(opt);
+	}
+	/**
+	 * 画像(描画オブジェクト)
+	 * @memberof Andesine
+	 * @param {object} [opt] - オプション
+	 * @param {CanvasRenderingContext2D | String} [opt.ctx]
+	 * @param {number} [opt.layer] - レイヤー番号
+	 * @param {Andesine.Vector2} [opt.position] - 座標
+	 * @param {Andesine.Vector2} [opt.size] - サイズ
+	 * @param {string} [opt.bg=""] - 背景色
+	 * @param {number | "max"} [opt.radius=0] - 丸角
+	 * @param {number} [opt.angle=0] - 角度
+	 * @param {"left" | "center" | "right"} [opt.boxAlign="left"] - 描画起点位置
+	 * @param {"top" | "middle" | "bottom"} [opt.boxBaseLine="top"] - 描画起点位置
+	 * @param {number} [opt.alpha=1] - 透明度
+	 * @param {"origin" | "manual" | "max" | "min" | "width" | "height"} [opt.aspectType="width"] - アスペクト比計算方法
 	 * @returns {Andesine.ImageBox}
 	 */
 	static ImageBox = class extends Andesine.Box {
-		constructor({ ctx, layer = 0, position = Andesine.Vector2.zero, size = Andesine.Vector2.zero, bg = "", radius = 0, boxAlign = "left", boxBaseLine = "top", alpha = 1 } = {}) {
-			super({ ctx, layer, position, size, bg, radius, boxAlign, boxBaseLine, alpha });
-			this.img = null;
+		img = null;
+
+		constructor({ ctx, layer = 0, position = Andesine.Vector2.zero, size = Andesine.Vector2.zero, bg = "", radius = 0, angle = 0, boxAlign = "left", boxBaseLine = "top", alpha = 1, aspectType = "width" } = {}) {
+			super({ ctx, layer, position, size, bg, radius, angle, boxAlign, boxBaseLine, alpha });
+
+			this.aspectType = aspectType;
 		}
 
-		// TODO:画像の読み込みとか
+		/**
+		 * 画像の指定
+		 * @param {object} [opt] - オプション
+		 * @param {string} [opt.url] - URL
+		 * @param {string} [opt.name] - 指定用名称
+		 * @returns {Promise<InstanceType<typeof Andesine.ImageBox>>}
+		 */
+		setImage({ url, name = "" }) {
+			return new Promise((resolve, reject) => {
+				this.manager.asset
+					.getImage({ url, name })
+					.then((img) => {
+						this.img = img;
+						resolve(this);
+					})
+					.catch((e) => {
+						this.bg = Andesine._ERROR_COLOR;
+						reject(this);
+					});
+			});
+		}
+
 		draw() {
 			super.draw();
 			const ctx = this.ctx;
 			const pos = this.relative();
-			ctx.drawImage(this.img, pos.x, pos.y, this.rect.width, this.rect.height);
+			if (this.img) {
+				let sw = 0,
+					sh = 0;
+				const rect = this.rect;
+				let af = "";
+				switch (this.aspectType) {
+					case "origin":
+						sw = this.img.width;
+						sh = this.img.height;
+						break;
+					case "manual":
+						sw = rect.width;
+						sh = rect.height;
+						break;
+					case "max":
+						if (rect.width == rect.height) {
+							if (this.img.width > this.img.height) {
+								af = "width";
+							} else {
+								af = "height";
+							}
+						} else if (rect.width > rect.height) {
+							af = "width";
+						} else {
+							af = "height";
+						}
+						break;
+					case "min":
+						if (rect.width == rect.height) {
+							if (this.img.width < this.img.height) {
+								af = "width";
+							} else {
+								af = "height";
+							}
+						} else if (rect.width < rect.height) {
+							af = "width";
+						} else {
+							af = "height";
+						}
+						break;
+					case "width":
+					case "height":
+						af = this.aspectType;
+						break;
+				}
+				switch (af) {
+					case "width":
+						sw = rect.width;
+						sh = rect.width * (this.img.height / this.img.width);
+						break;
+					case "height":
+						sw = rect.height * (this.img.width / this.img.height);
+						sh = rect.height;
+						break;
+				}
+				rect.size.x = sw;
+				rect.size.y = sh;
+				ctx.drawImage(this.img, pos.x, pos.y, sw, sh);
+			}
 		}
 	};
 
@@ -3026,16 +3265,16 @@ class Andesine {
 	 * 待機
 	 * @memberof Andesine
 	 * @param {func} func - コールバック
-	 * @param {number} [wait=1000] - 待機時間(fps)
+	 * @param {number} [frameTime=1000] - 待機時間(fps)
 	 * @returns {Andesine.WaitObj}
 	 */
 	static WaitObj = class extends Andesine.DrawObject {
 		anim = 0;
 
-		constructor(func, wait = 1000) {
+		constructor(func, frameTime = 1000) {
 			super();
 			this.func = func;
-			this.wait = wait;
+			this.wait = frameTime;
 		}
 
 		update() {
@@ -3058,6 +3297,7 @@ class Andesine {
 	 * @param  {Andesine.Vector2 | null} [opt.position=null] - 終了座標(任意)
 	 * @param  {Andesine.Vector2 | null} [opt.size=null] - 終了サイズ(任意)
 	 * @param  {number | null} [opt.angle=null] - 終了角度(任意)
+	 * @param  {number | null} [opt.alpha=null] - 終了透明度(任意)
 	 * @param  {number} [opt.frameTime=60] - 所要フレーム数
 	 * @param  {string} [opt.type="smooth"] - アニメーションタイプ (smooth | leap)
 	 * @param  {function} [opt.callback] - 終了時コールバック
@@ -3070,7 +3310,7 @@ class Andesine {
 		objType = null;
 		nowFrame = 0;
 
-		constructor(_this, { position = null, size = null, angle = null, frameTime = 60, type = "smooth", callback } = {}) {
+		constructor(_this, { position = null, size = null, angle = null, alpha = null, frameTime = 60, type = "smooth", callback } = {}) {
 			this.animObj = _this;
 			if (this.animObj instanceof Andesine.Box) {
 				this.objType = "box";
@@ -3088,6 +3328,8 @@ class Andesine {
 			this.size = size;
 			this.angle = angle;
 			this.startAngle = this.animObj.angle;
+			this.alpha = alpha;
+			this.startAlpha = this.animObj.alpha;
 			this.frameTime = frameTime;
 			this.type = type;
 			this.#callback = callback;
@@ -3143,7 +3385,7 @@ class Andesine {
 				}
 			}
 			if (this.angle != null) {
-				let angle = 0;
+				let angle;
 				switch (this.type) {
 					case "smooth":
 						angle = Jasc.animationSmoothDamp(this.startAngle, this.angle, t);
@@ -3153,6 +3395,18 @@ class Andesine {
 						break;
 				}
 				this.animObj.angle = angle;
+			}
+			if (this.alpha != null) {
+				let alpha;
+				switch (this.type) {
+					case "smooth":
+						alpha = Jasc.animationSmoothDamp(this.startAlpha, this.alpha, t);
+						break;
+					case "leap":
+						alpha = Jasc.animationLeap(this.startAlpha, this.alpha, t);
+						break;
+				}
+				this.animObj.alpha = alpha;
 			}
 			this.nowFrame++;
 			return pos;
@@ -3362,6 +3616,7 @@ class Andesine {
 	 * @returns {Andesine._Canvas}
 	 */
 	static _Canvas = class {
+		#_manager;
 		#children = {};
 		#layerList = [];
 
@@ -3391,6 +3646,19 @@ class Andesine {
 				},
 				this.canvas
 			);
+		}
+
+		get manager() {
+			return this.#_manager;
+		}
+
+		set manager(manager) {
+			if (this.#_manager) {
+				throw new Error("already set manager");
+			}
+			if (manager instanceof Andesine.GameManager) {
+				this.#_manager = manager;
+			}
 		}
 
 		_updateLayerList() {
@@ -3481,6 +3749,7 @@ class Andesine {
 			} else {
 				name = Jasc.setAssociativeAutoName(this.#children, child, "andesine");
 			}
+			child.manager = this.#_manager;
 			this._updateLayerList();
 			return name;
 		}
@@ -3536,7 +3805,8 @@ class Andesine {
 		 * @returns {string | null}
 		 */
 		get name() {
-			return; //TODO
+			//TODO: 実装方法を考えておく
+			throw new Error("Not Implemented");
 		}
 
 		/**
@@ -3565,6 +3835,11 @@ class Andesine {
 	 */
 	static GameManager = class {
 		#canvasDict = {};
+		#assetManager;
+
+		constructor() {
+			this.#assetManager = jasc.assetsManager();
+		}
 
 		/**
 		 * 文字列で返却
@@ -3577,6 +3852,18 @@ class Andesine {
 				canvas: this.#canvasDict,
 				canvasLength: this.getCanvasList().length,
 			});
+		}
+
+		/**
+		 * 使用されていない変数域を解放
+		 * @returns {number} 解放した数
+		 */
+		releaseResources() {
+			let count = 0;
+			for (const name in this.#canvasDict) {
+				count += this.#canvasDict[name].releaseResources();
+			}
+			return count;
 		}
 
 		/**
@@ -3724,6 +4011,7 @@ class Andesine {
 			} else {
 				name = Jasc.setAssociativeAutoName(this.#canvasDict, obj, "andesine");
 			}
+			obj.manager = this;
 			return name;
 		}
 
@@ -3761,6 +4049,15 @@ class Andesine {
 		 */
 		getCanvasList() {
 			return Object.keys(this.#canvasDict);
+		}
+
+		/**
+		 * アセット管理
+		 * @returns {InstanceType<typeof Jasc.AssetManager>}
+		 * @readonly
+		 */
+		get asset() {
+			return this.#assetManager;
 		}
 	};
 
@@ -3954,6 +4251,11 @@ class Andesine {
 		}
 		return new Andesine.Vector3(v, v, v);
 	}
+
+	// ####################################################################################################
+
+	// 計算用キャッシュ
+	static _CACHE_VEC2_ZERO = Andesine.Vector2.zero;
 }
 
 if (typeof Jasc !== "function") {
