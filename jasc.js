@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.6
+// jasc.js Ver.1.14.7
 
 /*
 ! ！！注意！！
@@ -107,6 +107,8 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 - jasc.dataTypeFormatting(data, nestingDepth = 0)
 * Jasc.isNativeCode(value, severe = true)								//値がNative Codeか判定
 - jasc.isNativeCode(value, severe = true)
+* Jasc.sleep(ms = 1000)													//指定時間待機
+- jasc.sleep(ms = 1000)
 *- canvas描画
 * jasc.draw.ctxSetting(ctx, opt = {})									//ctx設定・リセット
 * jasc.draw.canvasClear(ctx)											//キャンバスをクリア
@@ -169,6 +171,21 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 - jasc.chunk(arr, size)
 * Jasc.chunkDivide(arr, size)											//配列を分割(n個に)
 - jasc.chunkDivide(arr, size)
+* Jasc.animationLeap(start, end, t)										//線形補間
+- jasc.animationLeap(start, end, t)
+* Jasc.animationSmoothDamp(start, end, t)								//滑らかな線形補間
+- jasc.animationSmoothDamp(start, end, t)
+*- 角度計算
+* Jasc.rad2deg(radian)													//ラジアンから度に変換
+- jasc.rad2deg(radian)
+* Jasc.deg2rad(degree)													//度からラジアンに変換
+- jasc.deg2rad(degree)
+* Jasc.normalizeRadian(radian, symmetric = false)						//ラジアンを正規化(0~2πに変換)
+- jasc.normalizeRadian(radian, symmetric = false)
+* Jasc.normalizeDegree(degree)											//度を正規化(0~360に変換)
+- jasc.normalizeDegree(degree)
+* Jasc.isRadiansEqual(radian1, radian2, tolerance = 1e-4, toHalf = false)						//ラジアンの等価判定
+- jasc.isRadiansEqual(radian1, radian2, tolerance = 1e-4, toHalf = false)
 *- ファイル
 * Jasc.showOpenFileDialog(accept = "*", multiple = false, timeout = 180000, directory = false)	//ファイル選択画面表示
 - jasc.showOpenFileDialog(accept = "*", multiple = false, timeout = 180000, directory = false)
@@ -296,6 +313,7 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 * gameInit					//ゲーム初期化時
 * gameRequestAnimationFrame	//RequestAnimationFrameのタイミングで実行
 * gameFrameUpdate			//ゲーム(仮想)フレーム更新時
+* gameSecondUpdate			//ゲーム(仮想)秒更新時
 * canvasAdd					//キャンバス追加時
 * ctxAdd
 * canvasResize				//キャンバスサイズ変更時
@@ -545,6 +563,9 @@ class Jasc {
 		windowLoad: false,
 		windowLoadSkip: false,
 
+		gameInit: false,
+		resizeSkip: false,
+
 		jQueryLoad: false,
 	};
 
@@ -696,10 +717,12 @@ class Jasc {
 
 		nowFps: 0,
 		doFps: 0,
+		maxFps: 0,
 
 		isDrawing: true,
 		isOverFrame: false,
 
+		frame_sumTime: 0,
 		frame_avgTime: 0,
 		frame_minTime: 0,
 		frame_maxTime: 0,
@@ -728,6 +751,7 @@ class Jasc {
 		"gameInit",
 		"gameRequestAnimationFrame",
 		"gameFrameUpdate",
+		"gameSecondUpdate",
 
 		// jasc開発者用イベント
 		"runNow",
@@ -902,9 +926,8 @@ class Jasc {
 		//* 画面サイズ変更
 		window.addEventListener("resize", function (e) {
 			_this._dispatchEvent("windowResize", e);
-			if (_this.#jasc_settingData.isCanvasAutoResize) {
-				_this.game.canvasResize();
-			}
+
+			_this.game.canvasResize();
 		});
 		//* ウィンドウフォーカス
 		window.addEventListener("focus", function () {
@@ -1076,7 +1099,9 @@ class Jasc {
 		if (this.#jasc_initSettingData.isGame) {
 			this.#_gameInit();
 		}
-
+		if (this.#isFlags.resizeSkip) {
+			this.game.canvasResize();
+		}
 		// 画像err取得
 		this.#_autoImageErrorGet();
 		// 外部リンク判定
@@ -1813,6 +1838,7 @@ class Jasc {
 	//======================
 	#_gameInit() {
 		this._ccLog.log("gameInit do", "system");
+		this.#isFlags.gameInit = true;
 		this._dispatchEvent("gameInit");
 
 		this.#_fps_startTime = Jasc.getTime();
@@ -1857,6 +1883,7 @@ class Jasc {
 		if (times >= 1000) {
 			const game = this.#jasc_gameData;
 			// 処理時間計測
+			game.frame_sumTime = this.#_game_frameUpdate_sumTime;
 			game.frame_avgTime = this.#_game_frameUpdate_sumTime / this.#_fps_doFrameCount;
 			game.frame_maxTime = this.#_game_frameUpdate_maxTime;
 			game.frame_minTime = this.#_game_frameUpdate_minTime;
@@ -1865,15 +1892,19 @@ class Jasc {
 			this.#_game_frameUpdate_minTime = Infinity;
 			// FPS計測
 			game.nowFps = this.#_fps_frameCount;
+			if (game.maxFps < game.nowFps) {
+				game.maxFps = game.nowFps;
+			}
 			game.doFps = this.#_fps_doFrameCount;
 			this.#_fps_frameCount = 0;
 			this.#_fps_doFrameCount = 0;
 			this.#_fps_startTime = Jasc.getTime();
 			this.#_fps_oldFrame = 0;
+			this._dispatchEvent("gameSecondUpdate", game);
 		}
 
 		this._dispatchEvent("gameRequestAnimationFrame", this.#_fps_frameCount, this.#_fps_doFrameCount);
-		requestAnimationFrame(this.#gameRAFrame);
+		Jasc.requestAnimationFrame(this.#gameRAFrame);
 	}.bind(this);
 
 	#gameFrameUpdate() {
@@ -2507,7 +2538,6 @@ class Jasc {
 	/**
 	 * ファイル動的読み込み
 	 * @param {string} src - ファイルurl
-	 * @param {function} [callback] - 完了時コールバック
 	 * @param {Object} [opt] - オプション
 	 * @param {boolean} [opt.exp=""] - 設定タグ名(script,link)
 	 * @param {string} [opt.srcType=""] - 設定タグ名(src,href)
@@ -3277,6 +3307,22 @@ class Jasc {
 	 */
 	isNativeCode = Jasc.isNativeCode;
 
+	/**
+	 * 指定時間待機
+	 * @param {number} [ms=1000] - 待機時間
+	 * @returns {Promise<undefined>}
+	 * @static
+	 */
+	static sleep(ms = 1000) {
+		return new Promise((resolve) => setTimeout(resolve, ms));
+	}
+	/**
+	 * 指定時間待機
+	 * @param {number} [ms=1000] - 待機時間
+	 * @returns {Promise<undefined>}
+	 */
+	sleep = Jasc.sleep;
+
 	//======================
 	// 基本構成(canvas)
 	//======================
@@ -3465,6 +3511,11 @@ class Jasc {
 		 * @returns {undefined}
 		 */
 		canvasResize: function (width = 0, height = 0) {
+			if (!this.#isFlags.gameInit) {
+				this.#isFlags.resizeSkip = true;
+				return;
+			}
+
 			const _jasc_gameData = this.#jasc_gameData;
 			if (Object.keys(_jasc_gameData.canvas).length <= 0) {
 				return;
@@ -4317,6 +4368,115 @@ class Jasc {
 	animationSmoothDamp = Jasc.animationSmoothDamp;
 
 	//======================
+	// 角度計算
+	//======================
+
+	/**
+	 * ラジアンから度に変換
+	 * @param {number} radian - ラジアン
+	 * @returns {number} 度
+	 * @static
+	 */
+	static rad2deg(radian) {
+		return radian * (180 / Math.PI);
+	}
+	/**
+	 * ラジアンから度に変換
+	 * @param {number} radian - ラジアン
+	 * @returns {number} 度
+	 */
+	rad2deg = Jasc.rad2deg;
+
+	/**
+	 * 度からラジアンに変換
+	 * @param {number} degree - 度
+	 * @returns {number} ラジアン
+	 * @static
+	 */
+	static deg2rad(degree) {
+		return degree * (Math.PI / 180);
+	}
+	/**
+	 * 度からラジアンに変換
+	 * @param {number} degree - 度
+	 * @returns {number} ラジアン
+	 */
+	deg2rad = Jasc.deg2rad;
+
+	/**
+	 * ラジアンを正規化(0~2πに変換)
+	 * @param {number} radian - 角度
+	 * @param {boolean} [symmetric = false] - 範囲を0~2πから-π~πに変更する
+	 * @returns {number} 角度
+	 * @static
+	 */
+	static normalizeRadian(radian, symmetric = false) {
+		const PI = Math.PI;
+		const twoPI = 2 * PI;
+		let r = ((radian % twoPI) + twoPI) % twoPI;
+		if (symmetric) {
+			if (r > PI) {
+				r -= twoPI;
+			} else if (r < -PI) {
+				r += twoPI;
+			}
+		}
+		return r;
+	}
+	/**
+	 * ラジアンを正規化(0~2πに変換)
+	 * @param {number} radian - 角度
+	 * @param {boolean} [symmetric = false] - 範囲を0~2πから-π~πに変更する
+	 * @returns {number} 角度
+	 */
+	normalizeRadian = Jasc.normalizeRadian;
+
+	/**
+	 * 度を正規化(0~360に変換)
+	 * @param {number} degree - 角度
+	 * @returns {number} 角度
+	 * @static
+	 */
+	static normalizeDegree(degree) {
+		return ((degree % 360) + 360) % 360;
+	}
+	/**
+	 * 度を正規化(0~360に変換)
+	 * @param {number} degree - 角度
+	 * @returns {number} 角度
+	 */
+	normalizeDegree = Jasc.normalizeDegree;
+
+	/**
+	 * 2つのラジアンの差が許容範囲内か判定
+	 * @param {number} radian1 - 角度
+	 * @param {number} radian2 - 角度
+	 * @param {number} [tolerance=1e-4] - 許容範囲
+	 * @param {boolean} [toHalf=false] - [0,π], [π/2,π*(3/2)]は同一と見なす
+	 * @returns {boolean} 結果
+	 */
+	static isRadiansEqual(radian1, radian2, tolerance = 1e-4, toHalf = false) {
+		const normRadian1 = Jasc.normalizeRadian(radian1, toHalf);
+		const normRadian2 = Jasc.normalizeRadian(radian2, toHalf);
+
+		let difference = Math.abs(normRadian1 - normRadian2);
+
+		if (difference > Math.PI) {
+			difference = 2 * Math.PI - difference;
+		}
+		return difference < tolerance || Math.abs(difference - Math.PI) < tolerance;
+	}
+	/**
+	 * 2つのラジアンの差が許容範囲内か判定
+	 * @param {number} radian1 - 角度
+	 * @param {number} radian2 - 角度
+	 * @param {number} [tolerance=1e-4] - 許容範囲
+	 * @returns {boolean} 結果
+	 * @static
+	 */
+	isRadiansEqual = Jasc.isRadiansEqual;
+
+	//======================
 	// ファイル
 	//======================
 
@@ -4326,7 +4486,7 @@ class Jasc {
 	 * @param {boolean} [multiple=false] - 複数選択
 	 * @param {number} [timeout=180000] - タイムアウト(ms)
 	 * @param {boolean} [directory=false] - ディレクトリ選択
-	 * @returns {Promise<FileList>} 選択結果
+	 * @returns {Promise<File[]>} 選択結果
 	 * @static
 	 */
 	static showOpenFileDialog(accept = "*", multiple = false, timeout = 180000, directory = false) {
@@ -4337,7 +4497,12 @@ class Jasc {
 			input.multiple = multiple;
 			input.webkitdirectory = directory;
 			input.onchange = (event) => {
-				resolve(event.target.files);
+				const files = event.target.files;
+				const fileList = [];
+				for (let i = 0; i < files.length; i++) {
+					fileList.push(files[i]);
+				}
+				resolve(fileList);
 			};
 			input.click();
 			setTimeout(() => {
@@ -4351,32 +4516,40 @@ class Jasc {
 	 * @param {boolean} [multiple=false] - 複数選択
 	 * @param {number} [timeout=180000] - タイムアウト(ms)
 	 * @param {boolean} [directory=false] - ディレクトリ選択
-	 * @returns {Promise<FileList>} 選択結果
+	 * @returns {Promise<File[]>} 選択結果
 	 */
 	showOpenFileDialog = Jasc.showOpenFileDialog;
 
 	/**
 	 * ドロップされたファイルを取得
 	 * @param {string|jQuery|HTMLElement} dom - DOMオブジェクト
-	 * @param {function} callback - コールバック
+	 * @param {function(File[]):undefined} callback - コールバック
 	 * @returns {undefined}
 	 */
-	getDropFilesEvent(dom = "body", callback) {
+	getDropFilesEvent(dom = document, callback) {
 		if (typeof dom == "string") {
-			dom = this.acq(dom)[0];
+			dom = this.acq(dom);
+			if (Array.isArray(dom)) {
+				dom = dom[0];
+			}
 		} else {
 			dom = this.jQueryObjToDOM(dom);
 		}
-		dom.addEventListener("drop", async function (event) {
-			event.preventDefault();
-			event.stopPropagation();
+		if (!dom) {
+			return 1;
+		}
+		dom.addEventListener("drop", async function (e) {
+			e.preventDefault();
+			e.stopPropagation();
 
-			Jasc._getDropFilesEvent(event.dataTransfer.items, callback);
+			Jasc._getDropFilesEvent(e.dataTransfer.items, callback);
 		});
 		dom.addEventListener("dragover", (e) => {
 			e.preventDefault();
 			e.stopPropagation();
 		});
+
+		return 0;
 	}
 
 	// getDropFilesEventの内部処理用
@@ -4674,7 +4847,7 @@ class Jasc {
 	 * replaceのPromises対応版
 	 * @param {string} str - 文字列
 	 * @param {RegExp} regex - 正規表現
-	 * @param {function} asyncFn - replace時実行非同期関数
+	 * @param {function(string,...any):Promise<string>} asyncFn - replace時実行非同期関数
 	 * @returns {Promise<string>} 変換後
 	 * @async
 	 * @static
@@ -4693,7 +4866,7 @@ class Jasc {
 	 * replaceのPromises対応版
 	 * @param {string} str - 文字列
 	 * @param {RegExp} regex - 正規表現
-	 * @param {function} asyncFn - replace時実行非同期関数
+	 * @param {function(string,...any):Promise<string>} asyncFn - replace時実行非同期関数
 	 * @returns {Promise<string>} 変換後
 	 * @async
 	 */
@@ -4706,8 +4879,8 @@ class Jasc {
 	 * @param {object} [opt] - オプション
 	 * @param {boolean} [opt.configurable=false] - 設定可能
 	 * @param {boolean} [opt.enumerable=true] - 参照可能
-	 * @param {function} [opt.get] - getter
-	 * @param {function} [opt.set] - setter
+	 * @param {function():any} [opt.get] - getter
+	 * @param {function(any):undefined} [opt.set] - setter
 	 * @param {any} [opt.value] - 値
 	 * @param {boolean} [opt.writable=false] - 書き込み可能か
 	 * @returns {0|1} 実行結果

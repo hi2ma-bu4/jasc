@@ -29,6 +29,159 @@ class Andesine {
 	static _ERROR_COLOR = "#FF00FFD0";
 
 	// ####################################################################################################
+	// 計算定数
+
+	/**
+	 * 八分円周率(1/8)
+	 * @memberof Andesine
+	 * @type {number}
+	 * @static
+	 * @readonly
+	 */
+	static EIGHTH_PI = Math.PI / 8;
+	/**
+	 * 四分円周率(1/4)
+	 * @memberof Andesine
+	 * @type {number}
+	 * @static
+	 * @readonly
+	 */
+	static QUARTER_PI = Math.PI / 4;
+	/**
+	 * 半円周率(1/2)
+	 * @memberof Andesine
+	 * @type {number}
+	 * @static
+	 * @readonly
+	 */
+	static HALF_PI = Math.PI / 2;
+	/**
+	 * 四分の三円周率(3/4)
+	 * @memberof Andesine
+	 * @type {number}
+	 * @static
+	 * @readonly
+	 */
+	static THREE_QUARTERS_PI = Andesine.QUARTER_PI * 3;
+	/**
+	 * 円周率(1)
+	 * @memberof Andesine
+	 * @type {number}
+	 * @static
+	 * @readonly
+	 */
+	static PI = Math.PI;
+	/**
+	 * 1.5円周率(3/2)
+	 * @memberof Andesine
+	 * @type {number}
+	 * @static
+	 * @readonly
+	 */
+	static THREE_HALF_PI = Andesine.HALF_PI * 3;
+	/**
+	 * 2倍円周率(2)
+	 * @memberof Andesine
+	 * @type {number}
+	 * @static
+	 * @readonly
+	 */
+	static TAU = Math.PI * 2;
+	/**
+	 * 2倍円周率(2)
+	 * @memberof Andesine
+	 * @type {number}
+	 * @static
+	 * @readonly
+	 */
+	static TWO_PI = Andesine.TAU;
+
+	// ####################################################################################################
+	// 変更可能定数
+
+	/**
+	 * デバッグモード
+	 * @memberof Andesine
+	 * @type {boolean}
+	 * @static
+	 */
+	static DEBUG = false;
+
+	// ####################################################################################################
+
+	static _debug_save_data;
+	static _debug_save_data_setting(ctx) {
+		Andesine._debug_save_data = [
+			// ctxも保存する
+			ctx,
+			ctx.globalAlpha,
+			ctx.strokeStyle,
+			ctx.lineWidth,
+		];
+		ctx.globalAlpha = 0.5;
+		ctx.lineWidth = 1;
+	}
+	static _debug_restore_data_setting() {
+		const dsd = Andesine._debug_save_data;
+		if (!dsd) return;
+		const ctx = dsd[0];
+		ctx.globalAlpha = dsd[1];
+		ctx.strokeStyle = dsd[2];
+		ctx.lineWidth = dsd[3];
+
+		Andesine._debug_save_data = null;
+	}
+
+	/**
+	 * [デバッグ]回転前の色
+	 * @memberof Andesine
+	 * @type {string}
+	 * @static
+	 * @readonly
+	 */
+	static _DEBUG_BEFORE_ROTATION_COLOR = "#f00";
+	/**
+	 * [デバッグ]回転前の位置設定
+	 * @param {CanvasRenderingContext2D} ctx
+	 * @static
+	 */
+	static _debug_before_rotation_setting(ctx) {
+		Andesine._debug_save_data_setting(ctx);
+		ctx.strokeStyle = Andesine._DEBUG_BEFORE_ROTATION_COLOR;
+	}
+	/**
+	 * [デバッグ]衝突判定用の色
+	 * @memberof Andesine
+	 * @type {string}
+	 * @static
+	 * @readonly
+	 */
+	static _DEBUG_COLLISION_DETECTION_COLOR = "#0f0";
+	/**
+	 * [デバッグ]衝突判定用の設定
+	 * @param {CanvasRenderingContext2D} ctx
+	 * @static
+	 */
+	static _debug_collision_detection_setting(ctx) {
+		Andesine._debug_save_data_setting(ctx);
+		ctx.strokeStyle = Andesine._DEBUG_COLLISION_DETECTION_COLOR;
+	}
+	/**
+	 * [デバッグ]文字表示サイズ用の色
+	 * @memberof Andesine
+	 * @type {string}
+	 * @static
+	 * @readonly
+	 */
+	static _DEBUG_TEXT_SIZE_COLOR = "#0ff";
+	/**
+	 * [デバッグ]文字表示サイズの設定
+	 */
+	static _debug_text_size_setting(ctx) {
+		Andesine._debug_save_data_setting(ctx);
+		ctx.strokeStyle = Andesine._DEBUG_TEXT_SIZE_COLOR;
+	}
+	// ####################################################################################################
 
 	/**
 	 * 2次元座標
@@ -794,7 +947,7 @@ class Andesine {
 		 * @static
 		 */
 		static smoothDamp(start, end, t) {
-			return Andesine.Vector2.leap(start, end, -(Math.cos(Math.PI * t) - 1) / 2);
+			return Andesine.Vector2.leap(start, end, -(Math.cos(Andesine.PI * t) - 1) / 2);
 		}
 		/**
 		 * 2点間の滑らかな線形補間の座標に移動
@@ -870,6 +1023,7 @@ class Andesine {
 			const t2 = t * t;
 			const t3 = t2 * t;
 
+			const Vec2 = Andesine.Vector2.unpack;
 			const m = Andesine.Vector2.mul;
 
 			const v0 = m(Vec2(p2 - p0), 0.5);
@@ -1110,63 +1264,65 @@ class Andesine {
 				}
 			}
 			let tmpX, tmpY, tmpZ;
+			const _B_CARRY = Andesine._B_CARRY;
+			const _B_NEXT_CARRY_BASE = Andesine._B_NEXT_CARRY_BASE;
 			/*
 			* Xがマイナスか
-				((num & Andesine._B_CARRY) !== 0n)
+				((num & _B_CARRY) !== 0n)
 			* Yがマイナスか
-				((num & (Andesine._B_CARRY * Andesine._B_NEXT_CARRY_BASE)) !== 0n)
+				((num & (_B_CARRY * _B_NEXT_CARRY_BASE)) !== 0n)
 				//(num < 0)
 			* Zがマイナスか
-				((num & (Andesine._B_CARRY * Andesine._B_NEXT_CARRY_BASE * Andesine._B_NEXT_CARRY_BASE)) !== 0n)
+				((num & (_B_CARRY * _B_NEXT_CARRY_BASE * _B_NEXT_CARRY_BASE)) !== 0n)
 			*/
-			switch (((num & Andesine._B_CARRY) !== 0n) + ((num & (Andesine._B_CARRY * Andesine._B_NEXT_CARRY_BASE)) !== 0n) * 2 + ((num & (Andesine._B_CARRY * Andesine._B_NEXT_CARRY_BASE * Andesine._B_NEXT_CARRY_BASE)) !== 0n) * 4) {
+			switch (((num & _B_CARRY) !== 0n) + ((num & (_B_CARRY * _B_NEXT_CARRY_BASE)) !== 0n) * 2 + ((num & (_B_CARRY * _B_NEXT_CARRY_BASE * _B_NEXT_CARRY_BASE)) !== 0n) * 4) {
 				case 0:
 					// x+ y+ z+ (0~,0~,0~)
-					tmpX = num % Andesine._B_CARRY;
-					tmpY = ((num - tmpX) / Andesine._B_NEXT_CARRY_BASE) % Andesine._B_CARRY;
-					tmpZ = (num - tmpX - tmpY * Andesine._B_NEXT_CARRY_BASE) / Andesine._B_NEXT_CARRY_BASE / Andesine._B_NEXT_CARRY_BASE;
+					tmpX = num % _B_CARRY;
+					tmpY = ((num - tmpX) / _B_NEXT_CARRY_BASE) % _B_CARRY;
+					tmpZ = (num - tmpX - tmpY * _B_NEXT_CARRY_BASE) / _B_NEXT_CARRY_BASE / _B_NEXT_CARRY_BASE;
 					break;
 				case 1:
 					// x- y+ z+ (~-1,1~,0~)
-					tmpX = (num % Andesine._B_CARRY) - Andesine._B_CARRY;
-					tmpY = (((num + tmpX) / Andesine._B_NEXT_CARRY_BASE) % Andesine._B_CARRY) + 1n;
-					tmpZ = (num - tmpX - tmpY * Andesine._B_NEXT_CARRY_BASE) / Andesine._B_NEXT_CARRY_BASE / Andesine._B_NEXT_CARRY_BASE;
+					tmpX = (num % _B_CARRY) - _B_CARRY;
+					tmpY = (((num + tmpX) / _B_NEXT_CARRY_BASE) % _B_CARRY) + 1n;
+					tmpZ = (num - tmpX - tmpY * _B_NEXT_CARRY_BASE) / _B_NEXT_CARRY_BASE / _B_NEXT_CARRY_BASE;
 					break;
 				case 2:
 					// x+ y- z+ (0~,~-1,1~)
-					tmpX = (((num + Andesine._B_CARRY) % Andesine._B_CARRY) + Andesine._B_CARRY) % Andesine._B_CARRY;
-					tmpY = BigInt(Math.round(Number(((((num - tmpX) / Andesine._B_NEXT_CARRY_BASE) % Andesine._B_CARRY) - Andesine._B_CARRY) * 10n) / 10));
-					tmpZ = (num - tmpX - tmpY * Andesine._B_NEXT_CARRY_BASE) / Andesine._B_NEXT_CARRY_BASE / Andesine._B_NEXT_CARRY_BASE;
+					tmpX = (((num + _B_CARRY) % _B_CARRY) + _B_CARRY) % _B_CARRY;
+					tmpY = BigInt(Math.round(Number(((((num - tmpX) / _B_NEXT_CARRY_BASE) % _B_CARRY) - _B_CARRY) * 10n) / 10));
+					tmpZ = (num - tmpX - tmpY * _B_NEXT_CARRY_BASE) / _B_NEXT_CARRY_BASE / _B_NEXT_CARRY_BASE;
 					break;
 				case 3:
 					// x- y- z+ (~-1,~0,1~)
-					tmpX = (num % Andesine._B_CARRY) - Andesine._B_CARRY;
-					tmpY = ((((num - tmpX) / Andesine._B_NEXT_CARRY_BASE) % Andesine._B_CARRY) - Andesine._B_CARRY) % Andesine._B_CARRY;
-					tmpZ = (num - tmpX - tmpY * Andesine._B_NEXT_CARRY_BASE) / Andesine._B_NEXT_CARRY_BASE / Andesine._B_NEXT_CARRY_BASE;
+					tmpX = (num % _B_CARRY) - _B_CARRY;
+					tmpY = ((((num - tmpX) / _B_NEXT_CARRY_BASE) % _B_CARRY) - _B_CARRY) % _B_CARRY;
+					tmpZ = (num - tmpX - tmpY * _B_NEXT_CARRY_BASE) / _B_NEXT_CARRY_BASE / _B_NEXT_CARRY_BASE;
 					break;
 				case 4:
 					// x+ y+ z- (0~,0~,~-1)
-					tmpX = (((num + Andesine._B_CARRY) % Andesine._B_CARRY) + Andesine._B_CARRY) % Andesine._B_CARRY;
-					tmpY = ((((num - tmpX) / Andesine._B_NEXT_CARRY_BASE) % Andesine._B_CARRY) + Andesine._B_CARRY) % Andesine._B_CARRY;
-					tmpZ = (num - tmpX - tmpY * Andesine._B_NEXT_CARRY_BASE) / Andesine._B_NEXT_CARRY_BASE / Andesine._B_NEXT_CARRY_BASE;
+					tmpX = (((num + _B_CARRY) % _B_CARRY) + _B_CARRY) % _B_CARRY;
+					tmpY = ((((num - tmpX) / _B_NEXT_CARRY_BASE) % _B_CARRY) + _B_CARRY) % _B_CARRY;
+					tmpZ = (num - tmpX - tmpY * _B_NEXT_CARRY_BASE) / _B_NEXT_CARRY_BASE / _B_NEXT_CARRY_BASE;
 					break;
 				case 5:
 					// x- y+ z- (~-1,1~,~-1)
-					tmpX = ((((num + Andesine._B_CARRY) % Andesine._B_CARRY) + Andesine._B_CARRY) % Andesine._B_CARRY) - Andesine._B_CARRY;
-					tmpY = (((num + tmpX) / Andesine._B_NEXT_CARRY_BASE) % Andesine._B_CARRY) + Andesine._B_CARRY;
-					tmpZ = (num - tmpX - tmpY * Andesine._B_NEXT_CARRY_BASE) / Andesine._B_NEXT_CARRY_BASE / Andesine._B_NEXT_CARRY_BASE;
+					tmpX = ((((num + _B_CARRY) % _B_CARRY) + _B_CARRY) % _B_CARRY) - _B_CARRY;
+					tmpY = (((num + tmpX) / _B_NEXT_CARRY_BASE) % _B_CARRY) + _B_CARRY;
+					tmpZ = (num - tmpX - tmpY * _B_NEXT_CARRY_BASE) / _B_NEXT_CARRY_BASE / _B_NEXT_CARRY_BASE;
 					break;
 				case 6:
 					// x+ y- z- (0~,~-1,~-1)
-					tmpX = (((num + Andesine._B_CARRY) % Andesine._B_CARRY) + Andesine._B_CARRY) % Andesine._B_CARRY;
-					tmpY = BigInt(Math.round(Number((((num - tmpX) / Andesine._B_NEXT_CARRY_BASE) % Andesine._B_CARRY) * 10n) / 10));
-					tmpZ = (num - tmpX - tmpY * Andesine._B_NEXT_CARRY_BASE) / Andesine._B_NEXT_CARRY_BASE / Andesine._B_NEXT_CARRY_BASE;
+					tmpX = (((num + _B_CARRY) % _B_CARRY) + _B_CARRY) % _B_CARRY;
+					tmpY = BigInt(Math.round(Number((((num - tmpX) / _B_NEXT_CARRY_BASE) % _B_CARRY) * 10n) / 10));
+					tmpZ = (num - tmpX - tmpY * _B_NEXT_CARRY_BASE) / _B_NEXT_CARRY_BASE / _B_NEXT_CARRY_BASE;
 					break;
 				case 7:
 					// x- y- z- (~-1,~0,~-1)
-					tmpX = num % Andesine._B_CARRY;
-					tmpY = ((num - tmpX) / Andesine._B_NEXT_CARRY_BASE) % Andesine._B_CARRY;
-					tmpZ = (num - tmpX - tmpY * Andesine._B_NEXT_CARRY_BASE) / Andesine._B_NEXT_CARRY_BASE / Andesine._B_NEXT_CARRY_BASE;
+					tmpX = num % _B_CARRY;
+					tmpY = ((num - tmpX) / _B_NEXT_CARRY_BASE) % _B_CARRY;
+					tmpZ = (num - tmpX - tmpY * _B_NEXT_CARRY_BASE) / _B_NEXT_CARRY_BASE / _B_NEXT_CARRY_BASE;
 					break;
 			}
 			return new Andesine.Vector3(Number(tmpX) / Andesine._B_FRACT, Number(tmpY) / Andesine._B_FRACT, Number(tmpZ) / Andesine._B_FRACT);
@@ -1625,7 +1781,7 @@ class Andesine {
 		 * @static
 		 */
 		static smoothDamp(start, end, t) {
-			return Andesine.Vector3.leap(start, end, -(eased = (Math.cos(Math.PI * t) - 1) / 2));
+			return Andesine.Vector3.leap(start, end, -(eased = (Math.cos(Andesine.PI * t) - 1) / 2));
 		}
 		/**
 		 * 2点間の滑らかな線形補間の座標に移動
@@ -1773,35 +1929,16 @@ class Andesine {
 	 * 矩形
 	 * (四角い範囲)
 	 * @memberof Andesine
-	 * @param {number | Andesine.Vector2} x - x座標(x,y座標)
-	 * @param {number | Andesine.Vector2} y - y座標(w,hサイズ)
-	 * @param {number | Andesine.Vector2} width - 幅
-	 * @param {number} height - 高さ
+	 * @param {Andesine.Vector2 | number[]} xy - x,y座標
+	 * @param {Andesine.Vector2 | number[]} wh - 幅,高さ
 	 * @returns {Andesine.Rectangle}
 	 */
 	static Rectangle = class {
-		constructor(x = 0, y = 0, width = 0, height = 0) {
-			if (typeof x === "number") {
-				// x y ??
-				this.position = new Andesine.Vector2(x, y);
-				if (typeof width === "number") {
-					// w h
-					this.size = new Andesine.Vector2(width, height);
-				} else {
-					// wh
-					this.size = Andesine.Vector2.convert(width);
-				}
-			} else {
-				// xy ??
-				this.position = Andesine.Vector2.convert(x);
-				if (typeof y === "number") {
-					// w h
-					this.size = new Andesine.Vector2(y, width);
-				} else {
-					// wh
-					this.size = Andesine.Vector2.convert(y);
-				}
-			}
+		#_size;
+
+		constructor(xy = Andesine.Vector2.zero, wh = Andesine.Vector2.zero) {
+			this.position = Andesine.Vector2.convert(xy);
+			this.size = Andesine.Vector2.convert(wh);
 		}
 
 		/**
@@ -1817,62 +1954,583 @@ class Andesine {
 		}
 
 		/**
+		 * サイズ
+		 * @returns {InstanceType<typeof Andesine.Vector2>}
+		 * @readonly
+		 */
+		get size() {
+			this.#_normalizeSize();
+			return this.#_size;
+		}
+
+		/**
+		 * サイズ
+		 * @param {InstanceType<typeof Andesine.Vector2> | number[]} size
+		 */
+		set size(size) {
+			this.#_size = Andesine.Vector2.convert(size);
+			this.#_normalizeSize();
+		}
+
+		/**
+		 * x座標
+		 * @returns {number}
+		 * @readonly
+		 */
+		get x() {
+			return this.position.x;
+		}
+		/**
+		 * x座標
+		 * @param {number} x
+		 */
+		set x(x) {
+			this.position.x = x;
+		}
+		/**
+		 * y座標
+		 * @returns {number}
+		 * @readonly
+		 */
+		get y() {
+			return this.position.y;
+		}
+		/**
+		 * y座標
+		 * @param {number} y
+		 */
+		set y(y) {
+			this.position.y = y;
+		}
+		/**
+		 * 幅
+		 * @returns {number}
+		 * @readonly
+		 */
+		get width() {
+			return this.#_size.x;
+		}
+		/**
+		 * 幅
+		 * @param {number} w
+		 */
+		set width(w) {
+			this.#_size.x = w;
+			this.#_normalizeSize();
+		}
+		/**
+		 * 高さ
+		 * @returns {number}
+		 * @readonly
+		 */
+		get height() {
+			return this.#_size.y;
+		}
+		/**
+		 * 高さ
+		 * @param {number} h
+		 */
+		set height(h) {
+			this.#_size.y = h;
+			this.#_normalizeSize();
+		}
+
+		/**
+		 * 中心
+		 * @returns {InstanceType<typeof Andesine.Vector2>}
+		 * @readonly
+		 */
+		get center() {
+			return Andesine.Vector2.div(this.size, 2).add(this.position);
+		}
+
+		/**
+		 * 対角線の長さ
+		 * @returns {number}
+		 * @readonly
+		 */
+		get diagonal() {
+			const w = this.width;
+			const h = this.height;
+			return Math.sqrt(w * w + h * h);
+		}
+
+		/**
+		 * 90度回転させた矩形を生成
+		 * @returns {InstanceType<typeof Andesine.Rectangle>}
+		 */
+		rotate90() {
+			const c = this.center;
+			const w = this.width,
+				h = this.height;
+			return new Andesine.Rectangle([c.x - h / 2, c.y - w / 2], [h, w]);
+		}
+
+		/**
+		 * 矩形が収まる最小サイズの円を生成
+		 * @returns {InstanceType<typeof Andesine.Circle>}
+		 */
+		toCircle() {
+			return new Andesine.Circle({ xy: this.center, radius: this.diagonal / 2 });
+		}
+
+		/**
+		 * サイズの正規化
+		 * @returns {undefined}
+		 * @private
+		 */
+		#_normalizeSize() {
+			if (this.#_size.x < 0) {
+				this.#_size.x = 0;
+			}
+			if (this.#_size.y < 0) {
+				this.#_size.y = 0;
+			}
+		}
+
+		/**
+		 * 複製
+		 * @returns {InstanceType<typeof Andesine.Rectangle>}
+		 */
+		clone() {
+			return new Andesine.Rectangle(this.position.clone(), this.size.clone());
+		}
+
+		/**
+		 * 矩形同士の比較
+		 * @param {InstanceType<typeof Andesine.Rectangle>} other
+		 * @returns {boolean}
+		 */
+		eq(other) {
+			if (!other) {
+				return false;
+			}
+			return this.position.eq(other.position) && this.size.eq(other.size);
+		}
+
+		/**
 		 * 矩形の当たり判定
-		 * @param {InstanceType<typeof Andesine.Vector2> | InstanceType<typeof Andesine.Rectangle>} other
-		 * @param {boolean} [isFull=false] - 矩形全体に当たっているか
+		 * @param {InstanceType<typeof Andesine.Vector2> | InstanceType<typeof Andesine.Rectangle> | InstanceType<typeof Andesine.Circle>} other
+		 * @param {boolean} [isFull=false] - 矩形に完全に含まれるか
 		 * @returns {boolean}
 		 */
 		isInside(other, isFull = false) {
 			if (other instanceof Andesine.Vector2) {
-				if (other.x < this.x || this.x + this.width < other.x || other.y < this.y || this.y + this.height < other.y) {
-					return false;
-				}
+				// 矩形と点の当たり判定
+				return this.x <= other.x && other.x <= this.x + this.width && this.y <= other.y && other.y <= this.y + this.height;
 			} else if (other instanceof Andesine.Rectangle) {
+				// 矩形と矩形の当たり判定
 				if (isFull) {
-					if (other.x < this.x || this.x + this.width < other.x || other.y < this.y || this.y + this.height < other.y) {
-						return false;
-					}
-				} else {
-					// 部分的にでも擦ればok
-					if (other.x + other.width < this.x || this.x + this.width < other.x || other.y + other.height < this.y || this.y + this.height < other.y) {
-						return false;
-					}
+					//return this.x <= other.x && other.x <= this.x + this.width && this.y <= other.y && other.y <= this.y + this.height;
+					return this.x <= other.x && other.x + other.width <= this.x + this.width && this.y <= other.y && other.y + other.height <= this.y + this.height;
 				}
-			} else {
-				const pos = Andesine.Vector2.convert(other);
-				if (pos) {
-					return this.isInside(pos, isFull);
+				return this.x <= other.x + other.width && other.x <= this.x + this.width && this.y <= other.y + other.height && other.y <= this.y + this.height;
+			} else if (other instanceof Andesine.Circle) {
+				if (isFull) {
+					// 矩形と円(楕円)の当たり判定(内包)
+					function distanceCircleToLine(A, B, C) {
+						return Math.abs(A * cx + B * cy + C) / Math.sqrt(A * A + B * B);
+					}
+					let r = other.radius;
+					if (other.isEllipse) {
+						// 楕円の場合
+						r = Math.min(r.x, r.y);
+					}
+
+					const cx = other.x;
+					const cy = other.y;
+
+					const lines = [
+						{ A: 0, B: 1, C: -this.y },
+						{ A: 0, B: -1, C: this.y + this.height },
+						{ A: 1, B: 0, C: -this.x },
+						{ A: -1, B: 0, C: this.x + this.width },
+					];
+
+					for (const line of lines) {
+						if (distanceCircleToLine(line.A, line.B, line.C) > radius) {
+							return false;
+						}
+					}
+					return true;
 				}
-				console.warn("非対応の型");
-				return false;
+				// 矩形と円(楕円)の当たり判定(接触)
+				return other.isInside(this);
 			}
-			return true;
+			const pos = Andesine.Vector2.convert(other);
+			if (pos) {
+				return this.isInside(pos, isFull);
+			}
+			console.warn("非対応の型:", typeof other);
+			return false;
+		}
+	};
+
+	// ####################################################################################################
+
+	/**
+	 * 円
+	 * (円形の範囲)
+	 * @memberof Andesine
+	 * @param {object} [opt] - オプション
+	 * @param {number[] | Andesine.Vector2} [opt.xy] - 座標
+	 * @param {number | number[] | Andesine.Vector2} [opt.radius=0] - 半径
+	 * @param {number} [opt.startAngle=0] - 開始角度
+	 * @param {number} [opt.endAngle=Andesine.TAU] - 終了角度
+	 * @param {boolean} [opt.counterclockwise=false] - false:時計回り true:反時計回り
+	 * @returns {Andesine.Circle}
+	 */
+	static Circle = class {
+		#_radius;
+
+		constructor({ xy = Andesine.Vector2.zero, radius = 0, startAngle = 0, endAngle = Andesine.TAU, counterclockwise = false }) {
+			this.position = Andesine.Vector2.convert(xy);
+			this.radius = radius;
+			this.startAngle = startAngle;
+			this.endAngle = endAngle;
+			this.counterclockwise = counterclockwise;
 		}
 
-		// getter/setter
+		/**
+		 * 楕円か
+		 * @returns {boolean}
+		 * @readonly
+		 */
+		get isEllipse() {
+			return typeof this.#_radius !== "number";
+		}
+
+		/**
+		 * 文字列で返却
+		 * @param {number} [nesting] - 表示階層
+		 * @returns {string}
+		 */
+		toString(nesting = 1) {
+			return Andesine.Util.createToStringMessage(this, nesting, {
+				position: this.position,
+				radius: this.radius,
+				isEllipse: this.isEllipse,
+				angle: [this.startAngle, this.endAngle],
+				counterclockwise: this.counterclockwise,
+			});
+		}
+
+		/**
+		 * 半径
+		 * @returns {number | InstanceType<typeof Andesine.Vector2>}
+		 * @readonly
+		 */
+		get radius() {
+			this.#_normalizeRadius();
+			return this.#_radius;
+		}
+		/**
+		 * 半径
+		 * @param {number | number[] | InstanceType<typeof Andesine.Vector2>} r
+		 */
+		set radius(r) {
+			if (typeof r === "number") {
+				this.#_radius = r;
+				this.#_normalizeRadius();
+				return;
+			}
+			const rad = Andesine.Vector2.convert(r);
+			if (rad.x == rad.y) {
+				this.#_radius = rad.x;
+			} else {
+				this.#_radius = rad;
+			}
+			this.#_normalizeRadius();
+		}
+		/**
+		 * 半径w
+		 * @returns {number}
+		 * @readonly
+		 */
+		get radiusW() {
+			if (this.isEllipse) {
+				return this.#_radius.x;
+			}
+			return this.#_radius;
+		}
+		/**
+		 * 半径w
+		 * @param {number} r
+		 */
+		set radiusW(r) {
+			if (this.isEllipse) {
+				if (this.#_radius.y == r) {
+					this.#_radius = r;
+				} else {
+					this.#_radius.x = r;
+				}
+				this.#_normalizeRadius();
+				return;
+			}
+			this.radius = [r, this.radius];
+		}
+		/**
+		 * 半径h
+		 * @returns {number}
+		 * @readonly
+		 */
+		get radiusH() {
+			if (this.isEllipse) {
+				return this.#_radius.y;
+			}
+			return this.#_radius;
+		}
+		/**
+		 * 半径h
+		 * @param {number} r
+		 */
+		set radiusH(r) {
+			if (this.isEllipse) {
+				if (this.#_radius.x == r) {
+					this.#_radius = r;
+				} else {
+					this.#_radius.y = r;
+				}
+				this.#_normalizeRadius();
+				return;
+			}
+			this.radius = [this.radius, r];
+		}
+
+		/**
+		 * 半径の正規化
+		 * @returns {undefined}
+		 * @private
+		 */
+		#_normalizeRadius() {
+			if (this.isEllipse) {
+				if (this.#_radius.x < 0) {
+					this.#_radius.x = 0;
+				}
+				if (this.#_radius.y < 0) {
+					this.#_radius.y = 0;
+				}
+				return;
+			}
+			if (this.#_radius < 0) {
+				this.#_radius = 0;
+			}
+		}
+
+		/**
+		 * x座標
+		 * @returns {number}
+		 * @readonly
+		 */
 		get x() {
 			return this.position.x;
 		}
+		/**
+		 * x座標
+		 * @param {number} x
+		 */
 		set x(x) {
 			this.position.x = x;
 		}
+		/**
+		 * y座標
+		 * @returns {number}
+		 * @readonly
+		 */
 		get y() {
 			return this.position.y;
 		}
+		/**
+		 * y座標
+		 * @param {number} y
+		 */
 		set y(y) {
 			this.position.y = y;
 		}
-		get width() {
-			return this.size.x;
+
+		/**
+		 * 上部座標
+		 * @returns {number}
+		 * @readonly
+		 */
+		get top() {
+			if (this.isEllipse) {
+				return this.position.y - this.radius;
+			}
+			return this.position.y - this.radius.y;
 		}
-		set width(w) {
-			this.size.x = w;
+		/**
+		 * 下部座標
+		 * @returns {number}
+		 * @readonly
+		 */
+		get bottom() {
+			if (this.isEllipse) {
+				return this.position.y + this.radius;
+			}
+			return this.position.y + this.radius.y;
 		}
-		get height() {
-			return this.size.y;
+		/**
+		 * 左端座標
+		 * @returns {number}
+		 * @readonly
+		 */
+		get left() {
+			if (this.isEllipse) {
+				return this.position.x - this.radius;
+			}
+			return this.position.x - this.radius.x;
 		}
-		set height(h) {
-			this.size.y = h;
+		/**
+		 * 右端座標
+		 * @returns {number}
+		 * @readonly
+		 */
+		get right() {
+			if (this.isEllipse) {
+				return this.position.x + this.radius;
+			}
+			return this.position.x + this.radius.x;
+		}
+
+		/**
+		 * 複製
+		 * @returns {InstanceType<typeof Andesine.Circle>}
+		 */
+		clone() {
+			return new Andesine.Circle(this);
+		}
+
+		/**
+		 * 円同士の比較
+		 * @param {InstanceType<typeof Andesine.Circle>} other
+		 * @param {boolean} [severe=false] - 詳細比較
+		 * @returns {boolean}
+		 */
+		eq(other, severe = false) {
+			if (!other) {
+				return false;
+			}
+			let res = this.position.eq(other.position);
+			if (this.isEllipse) {
+				if (!other.isEllipse) {
+					return false;
+				}
+				res &&= this.#_radius.eq(other.radius);
+			} else {
+				if (other.isEllipse) {
+					return false;
+				}
+				res &&= this.#_radius == other.radius;
+			}
+			if (!severe) {
+				return res;
+			}
+			return res && this.startAngle == other.startAngle && this.endAngle == other.endAngle && this.counterclockwise == other.counterclockwise;
+		}
+
+		/**
+		 * 円の当たり判定
+		 * @param {InstanceType<typeof Andesine.Vector2> | InstanceType<typeof Andesine.Circle> | InstanceType<typeof Andesine.Rectangle>} other
+		 * @param {boolean} [isFull=false] - 円に完全に含まれるか
+		 * @returns {boolean}
+		 */
+		isInside(other, isFull = false) {
+			const r = this.#_radius;
+			if (other instanceof Andesine.Vector2) {
+				if (this.isEllipse) {
+					// 楕円と点の当たり判定
+					const leftSide = (other.x - this.x) ** 2 / r.x ** 2;
+					const rightSide = (other.y - this.y) ** 2 / r.y ** 2;
+					return leftSide + rightSide <= 1;
+				}
+				// 円と点の当たり判定
+				return (other.x - this.x) ** 2 + (other.y - this.y) ** 2 <= r ** 2;
+			} else if (other instanceof Andesine.Circle) {
+				const isE1 = this.isEllipse;
+				const isE2 = other.isEllipse;
+				const r2 = other.radius;
+				if (isE1 && isE2) {
+					// 楕円と楕円の当たり判定
+					const dx = other.x - this.x;
+					const dy = other.y - this.y;
+					const distance = Math.sqrt(dx * dx + dy * dy);
+					if (isFull) {
+						return distance + r2.x <= r.x && distance + r2.y <= r.y;
+					}
+					return distance <= r.x + r2.x && distance <= r.y + r2.y;
+				} else if (isE1 || isE2) {
+					let distance, r_ell1, r_ell2;
+					if (isE1) {
+						// 楕円と円の当たり判定
+						const dx = this.x - other.x;
+						const dy = this.y - other.y;
+						distance = Math.sqrt(dx * dx + dy * dy);
+						r_ell1 = r2;
+						r_ell2 = r;
+					} else {
+						// 円と楕円の当たり判定
+						const dx = other.x - this.x;
+						const dy = other.y - this.y;
+						distance = Math.sqrt(dx * dx + dy * dy);
+						r_ell1 = r;
+						r_ell2 = r2;
+					}
+					if (isFull) {
+						return distance + r_ell2.x <= r_ell1 && distance + r_ell2.y <= r_ell1;
+					}
+					return distance <= r_ell1 + Math.max(r_ell2.x, r_ell2.y);
+				}
+				// 円と円の当たり判定
+				const dx = other.x - this.x;
+				const dy = other.y - this.y;
+				const distance = Math.sqrt(dx * dx + dy * dy);
+				if (isFull) {
+					return distance + r2 <= r;
+				}
+				return distance <= r + r2;
+			} else if (other instanceof Andesine.Rectangle) {
+				// 円(楕円)と矩形の当たり判定
+				if (isFull) {
+					// TODO: 矩形と円(楕円)の当たり判定(内包)
+					console.warn("矩形と円の当たり判定は未実装");
+				}
+
+				const rc = other.center;
+				const halfWidth = other.width / 2;
+				const halfHeight = other.height / 2;
+				const dx = Math.abs(this.x - rc.x);
+				const dy = Math.abs(this.y - rc.y);
+				let radiusX, radiusY;
+				if (this.isEllipse) {
+					radiusX = r.x;
+					radiusY = r.y;
+				} else {
+					radiusX = r;
+					radiusY = r;
+				}
+
+				// 四角の半幅と半高さを超えているかどうかを判定
+				if (dx > halfWidth + radiusX || dy > halfHeight + radiusY) {
+					return false;
+				}
+				// 四角のエッジに最も近い点までの距離を計算
+				if (dx <= halfWidth || dy <= halfHeight) {
+					return true;
+				}
+				// 楕円の場合の接触判定
+				if (this.isEllipse) {
+					return (dx - halfWidth) ** 2 / radiusX ** 2 + (dy - halfHeight) ** 2 / radiusY ** 2 <= 1;
+				}
+				// 円の場合の接触判定
+				return (dx - halfWidth) ** 2 + (dy - halfHeight) ** 2 <= radiusX ** 2;
+			}
+			const pos = Andesine.Vector2.convert(other);
+			if (pos) {
+				return this.isInside(pos, isFull);
+			}
+			console.warn("非対応の型:", typeof other);
+			return false;
 		}
 	};
 
@@ -1945,7 +2603,7 @@ class Andesine {
 		/**
 		 * イベントを追加
 		 * @param {string} eventType - イベントタイプ
-		 * @param {Function} callback
+		 * @param {function} callback
 		 * @param {string} [name=""] - 削除時の参照用名称
 		 */
 		on = this.addEventListener;
@@ -2000,6 +2658,10 @@ class Andesine {
 			}
 			return count;
 		}
+
+		eventExists(eventType) {
+			return eventType in this.#_events;
+		}
 	};
 
 	// ####################################################################################################
@@ -2011,11 +2673,16 @@ class Andesine {
 	 * @param {Object} [opt]
 	 * @param {CanvasRenderingContext2D | String} [opt.ctx]
 	 * @param {number} [opt.layer] - レイヤー番号
+	 * @param {Andesine.DrawObject} [opt.parent] - 親オブジェクト
+	 * @param {"off" | "gc" | "on"} [opt.hiddenToDestroy="off"] - 非表示時に強制削除(自身が非表示の時点で削除)
+	 * @param {Andesine.Mask} [opt.mask] - クリッピングマスク
 	 * @returns {Andesine.DrawObject}
 	 * @abstract
 	 */
 	static DrawObject = class extends Andesine.EventDispatcher {
 		#_manager = null;
+		#_canvasObj = null;
+		#_mask = null;
 		#_parent = null;
 		#_children = {};
 		#_layerList = [];
@@ -2023,11 +2690,15 @@ class Andesine {
 		#_alpha = 1;
 		#_angle = 0;
 
+		#isDisabled = false;
+
 		isDestroy = false;
 		isHidden = false;
 		_ctx = null;
 
-		constructor({ ctx = null, layer = 0 } = {}) {
+		_cache_isInCanvas = null;
+
+		constructor({ ctx = null, layer = 0, parent = null, hiddenToDestroy = "off", mask = null } = {}) {
 			super();
 			if (ctx == null) {
 				ctx = jasc.game.getCurrentCtx();
@@ -2049,6 +2720,13 @@ class Andesine {
 			}
 			this._ctx = ctx;
 			this.layer = layer;
+
+			if (parent && parent.appendChild) {
+				parent.appendChild(this);
+			}
+
+			this.hiddenToDestroy = hiddenToDestroy.toLowerCase();
+			this.mask = mask;
 		}
 
 		/**
@@ -2062,7 +2740,6 @@ class Andesine {
 			}
 			return this.#_manager;
 		}
-
 		/**
 		 * ゲームマネージャーを設定する
 		 * @param {InstanceType<typeof Andesine.GameManager>} manager
@@ -2070,6 +2747,27 @@ class Andesine {
 		set manager(manager) {
 			if (manager instanceof Andesine.GameManager) {
 				this.#_manager = manager;
+			}
+		}
+
+		/**
+		 * キャンバスオブジェクトを取得する
+		 * @returns {InstanceType<typeof Andesine._Canvas>}
+		 * @readonly
+		 */
+		get canvasObject() {
+			if (!this.#_canvasObj && this.parent) {
+				this.#_canvasObj = this.parent.canvasObject;
+			}
+			return this.#_canvasObj;
+		}
+		/**
+		 * キャンバスオブジェクトを設定する
+		 * @param {InstanceType<typeof Andesine._Canvas>} canvasObj
+		 */
+		set canvasObject(canvasObj) {
+			if (canvasObj instanceof Andesine._Canvas) {
+				this.#_canvasObj = canvasObj;
 			}
 		}
 
@@ -2083,6 +2781,28 @@ class Andesine {
 				return this.#_parent.ctx;
 			}
 			return this._ctx;
+		}
+
+		/**
+		 * マスクを取得
+		 * @returns {InstanceType<typeof Andesine.Mask>}
+		 */
+		get mask() {
+			return this.#_mask;
+		}
+		/**
+		 * マスクを設定
+		 * @param {InstanceType<typeof Andesine.Mask> | null} mask
+		 * @throws {Error} マスクはオブジェクトで指定して下さい
+		 */
+		set mask(mask) {
+			if (mask && !(mask instanceof Andesine.Mask)) {
+				throw new Error("マスクはオブジェクトで指定して下さい。");
+			}
+			this.#_mask = mask;
+			if (this.#_mask) {
+				this.#_mask._setParent(this);
+			}
 		}
 
 		/**
@@ -2115,6 +2835,36 @@ class Andesine {
 		 */
 		_updateLayerList() {
 			this.#_layerList = Andesine.Util.getSortLayerList(this.#_children);
+		}
+
+		/**
+		 * ボタンイベント無効化
+		 * @returns {boolean}
+		 * @readonly
+		 */
+		get isDisabled() {
+			if (this.#_parent?.isDisabled) {
+				return true;
+			}
+			return this.#isDisabled;
+		}
+		/**
+		 * ボタンイベント無効化
+		 * @param {boolean} disable
+		 */
+		set isDisabled(disable) {
+			if (typeof disable !== "boolean") {
+				disable = !!disable;
+			}
+			this.#isDisabled = disable;
+		}
+
+		addEventListener(eventType, callback, name = "") {
+			const new_name = super.addEventListener(eventType, callback, name);
+			if (eventType == "change") {
+				this._checkChangeObject(true);
+			}
+			return new_name;
 		}
 
 		/**
@@ -2186,6 +2936,15 @@ class Andesine {
 		}
 
 		/**
+		 * 画面描画時の角度(正規化)
+		 * @returns {number}
+		 * @readonly
+		 */
+		get normalizeDisplayAngle() {
+			return Jasc.normalizeRadian(this.displayAngle);
+		}
+
+		/**
 		 * 文字列で返却
 		 * @param {number} [nesting] - 表示階層
 		 * @returns {string}
@@ -2205,6 +2964,12 @@ class Andesine {
 		 */
 		releaseResources() {
 			let count = super.releaseResources();
+			if (this.hiddenToDestroy === "gc") {
+				if (this.isInCanvas && !this.isInCanvas()) {
+					this.isDestroy = true;
+					return count + 1;
+				}
+			}
 			for (let i = 0, li = this.#_layerList.length; i < li; i++) {
 				count += this.#_children[this.#_layerList[i]].releaseResources();
 			}
@@ -2227,24 +2992,53 @@ class Andesine {
 		 * @returns {undefined}
 		 */
 		resetting() {
-			const size = Andesine.getFullSize(this, this.#_parent);
-			this.dispatchEvent("resetting", this, this.#_parent, size);
+			if (this.eventExists("resetting")) {
+				const event = new Andesine.GameResettingEvent(this);
+				this.dispatchEvent("resetting", event);
+			}
 		}
 
 		/**
 		 * 全体オブジェクト更新ループ
 		 * @returns {undefined}
 		 */
-		_systemUpdate() {
+		_systemUpdate(isParentChange) {
+			let count = 0;
+			this._cache_isInCanvas = null;
+			const _isParCheck = this._checkChangeObject(isParentChange);
+			if (_isParCheck && this.hiddenToDestroy === "on") {
+				if (this.isInCanvas && !this.isInCanvas()) {
+					this.isDestroy = true;
+					return count;
+				}
+			}
 			this.update();
+			count++;
+			const list = this.#_layerList.slice();
 			for (let i = 0, li = this.#_layerList.length; i < li; i++) {
-				const name = this.#_layerList[i];
+				const name = list[i];
 				const child = this.#_children[name];
-				child._systemUpdate();
+				count += child._systemUpdate(_isParCheck);
 				if (this.isDestroy || child.isDestroy) {
 					this.removeChild(name);
 				}
 			}
+			return count;
+		}
+
+		/**
+		 * 前回確認時との変更をチェック
+		 * @param {boolean} [isParentChange] - 親変更フラグ
+		 * @returns {boolean} 変更フラグ
+		 */
+		_checkChangeObject(isParentChange) {
+			if (isParentChange) {
+				if (this.eventExists("change")) {
+					const event = new Andesine.GameChangeEvent(this);
+					this.dispatchEvent("change", event);
+				}
+			}
+			return false;
 		}
 
 		/**
@@ -2260,25 +3054,29 @@ class Andesine {
 		 */
 		_systemDraw(isDraw) {
 			if (this.isDestroy) {
-				return;
+				return 0;
 			}
 			if (!isDraw || this.isHidden) {
-				return;
+				return 0;
 			}
+			let count = 0;
 			const ctx = this.ctx;
 			ctx.save();
-			this.draw();
+			count += !this.draw();
 			ctx.restore();
 			for (let i = 0, li = this.#_layerList.length; i < li; i++) {
-				this.#_children[this.#_layerList[i]]._systemDraw(isDraw);
+				count += this.#_children[this.#_layerList[i]]._systemDraw(isDraw);
 			}
+			return count;
 		}
 
 		/**
 		 * 描画ループ
-		 * @returns {undefined}
+		 * @returns {boolean}
 		 */
-		draw() {}
+		draw() {
+			return false;
+		}
 
 		/**
 		 * 全体ホバー時処理
@@ -2287,9 +3085,10 @@ class Andesine {
 		 * @returns {undefined}
 		 */
 		_systemHover(es, deepHover = []) {
-			if (this.isDestroy) {
+			if (this.isDestroy || this.isDisabled) {
 				return;
 			}
+
 			if (this.isInside) {
 				if (!deepHover.length) {
 					deepHover = [];
@@ -2304,8 +3103,10 @@ class Andesine {
 						deepHover[i] = 0;
 					}
 				}
-				const event = new Andesine.GameHoverEvent(this, es, deepHover);
-				this.dispatchEvent("hover", event);
+				if (this.eventExists("hover")) {
+					const event = new Andesine.GameHoverEvent(this, es, deepHover);
+					this.dispatchEvent("hover", event);
+				}
 			}
 
 			deepHover = deepHover.map((d) => d + 1);
@@ -2322,7 +3123,7 @@ class Andesine {
 		 * @returns {undefined}
 		 */
 		_systemClick(es, deepClick = []) {
-			if (this.isDestroy) {
+			if (this.isDestroy || this.isDisabled) {
 				return;
 			}
 			if (this.isInside) {
@@ -2339,8 +3140,10 @@ class Andesine {
 						deepClick[i] = 0;
 					}
 				}
-				const event = new Andesine.GameClickEvent(this, es, deepClick);
-				this.dispatchEvent("click", event);
+				if (this.eventExists("click")) {
+					const event = new Andesine.GameClickEvent(this, es, deepClick);
+					this.dispatchEvent("click", event);
+				}
 			}
 
 			deepClick = deepClick.map((d) => d + 1);
@@ -2498,9 +3301,14 @@ class Andesine {
 	 * @param {object} [opt] - オプション
 	 * @param {CanvasRenderingContext2D | String} [opt.ctx]
 	 * @param {number} [opt.layer] - レイヤー番号
+	 * @param {Andesine.DrawObject} [opt.parent] - 親オブジェクト
+	 * @param {"off" | "gc" | "on"} [opt.hiddenToDestroy="off"] - 非表示時に強制削除(自身が非表示の時点で削除)
+	 * @param {Andesine.Mask} [opt.mask] - クリッピングマスク
 	 * @param {Andesine.Vector2} [opt.position] - 座標
 	 * @param {Andesine.Vector2} [opt.size] - サイズ
 	 * @param {string} [opt.bg=""] - 背景色
+	 * @param {string} [opt.bgBd=""] - 枠線
+	 * @param {number} [opt.bgBdWidth=1] - 枠線の太さ
 	 * @param {number | "max"} [opt.radius=0] - 丸角
 	 * @param {number} [opt.angle=0] - 角度
 	 * @param {"left" | "center" | "right"} [opt.boxAlign="left"] - 描画起点位置
@@ -2518,9 +3326,14 @@ class Andesine {
 	 * @param {object} [opt] - オプション
 	 * @param {CanvasRenderingContext2D | String} [opt.ctx]
 	 * @param {number} [opt.layer] - レイヤー番号
+	 * @param {Andesine.DrawObject} [opt.parent] - 親オブジェクト
+	 * @param {"off" | "gc" | "on"} [opt.hiddenToDestroy="off"] - 非表示時に強制削除(自身が非表示の時点で削除)
+	 * @param {Andesine.Mask} [opt.mask] - クリッピングマスク
 	 * @param {Andesine.Vector2} [opt.position] - 座標
 	 * @param {Andesine.Vector2} [opt.size] - サイズ
 	 * @param {string} [opt.bg=""] - 背景色
+	 * @param {string} [opt.bgBd=""] - 枠線
+	 * @param {number} [opt.bgBdWidth=1] - 枠線の太さ
 	 * @param {number | "max"} [opt.radius=0] - 丸角
 	 * @param {number} [opt.angle=0] - 角度
 	 * @param {"left" | "center" | "right"} [opt.boxAlign="left"] - 描画起点位置
@@ -2529,15 +3342,21 @@ class Andesine {
 	 * @returns {Andesine.Box}
 	 */
 	static Box = class extends Andesine.DrawObject {
-		_animationObj;
+		_animationObjData = {};
+		_animationPromiseData = {};
 
-		constructor({ ctx, layer = 0, position = Andesine.Vector2.zero, size = Andesine.Vector2.zero, bg = "", radius = 0, angle = 0, boxAlign = "left", boxBaseLine = "top", alpha = 1 } = {}) {
-			super({ ctx, layer });
-			this.setting = {
-				size,
-			};
+		setting = {};
+
+		_cache_relative;
+		_cache_Rect;
+
+		constructor({ ctx, layer = 0, parent = null, hiddenToDestroy = "off", mask = null, position = Andesine.Vector2.zero, size = Andesine.Vector2.zero, bg = "", bgBd = "", bgBdWidth = 1, radius = 0, angle = 0, boxAlign = "left", boxBaseLine = "top", alpha = 1 } = {}) {
+			super({ ctx, layer, parent, hiddenToDestroy, mask });
+			this.setting.size = size;
 			this.rect = new Andesine.Rectangle(position, this._updateSize(false));
 			this.bg = bg;
+			this.bgBd = bgBd;
+			this.bgBdWidth = bgBdWidth;
 			this.radius = radius;
 			this.angle = angle;
 			this.boxAlign = boxAlign;
@@ -2561,10 +3380,38 @@ class Andesine {
 			});
 		}
 
+		/**
+		 * 前回確認時との変更をチェック
+		 * @param {boolean} [isParentChange] - 親変更フラグ
+		 * @returns {boolean} 変更フラグ
+		 * @override
+		 */
+		_checkChangeObject(isParentChange, stack = false) {
+			this._cache_relative = null;
+			const rect = new Andesine.Rectangle(this.relative(), this.rect.size);
+			const isChange = !rect.eq(this._cache_Rect);
+			if (isChange) {
+				this._cache_Rect = rect;
+			}
+			if (isChange || isParentChange) {
+				if (this.eventExists("change")) {
+					const event = new Andesine.GameChangeEvent(this);
+					this.dispatchEvent("change", event);
+					if (!stack) {
+						this._checkChangeObject(false, true);
+					}
+				}
+			}
+			return isChange;
+		}
+
 		update() {
-			this.dispatchEvent("update", this);
-			if (this._animationObj) {
-				this._animationObj.update();
+			if (this.eventExists("update")) {
+				const event = new Andesine.GameUpdateEvent(this);
+				this.dispatchEvent("update", event);
+			}
+			for (const name in this._animationObjData) {
+				this._animationObjData[name].update();
 			}
 		}
 
@@ -2577,24 +3424,60 @@ class Andesine {
 			} else {
 				setting.fillStyle = "transparent";
 			}
+			if (this.bgBd) {
+				setting.strokeStyle = this.bgBd;
+				setting.lineWidth = this.bgBdWidth;
+			} else {
+				setting.strokeStyle = "transparent";
+			}
 			setting.globalAlpha = this.displayAlpha;
 			jasc.draw.ctxSetting(ctx, setting);
-			this.dispatchEvent("draw", this);
+			if (this.eventExists("draw")) {
+				const event = new Andesine.GameDrawEvent(this);
+				this.dispatchEvent("draw", event);
+			}
 			const pos = this.relative();
 			this._updateSize(true);
+			// 透明なら描画しない
 			if (setting.globalAlpha == 0) {
 				return true;
 			}
+			// キャンバス外なら描画しない
+			if (!this.isInCanvas()) {
+				return true;
+			}
 
-			const angle = this.displayAngle;
-			if (angle != 0) {
+			if (Andesine.DEBUG) {
+				Andesine._debug_before_rotation_setting(ctx);
+				ctx.strokeRect(pos.x, pos.y, this.rect.size.x, this.rect.size.y);
+				Andesine._debug_restore_data_setting();
+			}
+
+			const angle = this.normalizeDisplayAngle;
+			if (!Jasc.compareFloats(angle, 0)) {
 				const centerPos = this.getCenter();
 				ctx.translate(...centerPos.array);
 				ctx.rotate(angle);
 				ctx.translate(...centerPos.inverse.array);
 			}
+			if (this.mask) {
+				this.mask.clip(ctx, pos);
+			}
+
+			if (Andesine.DEBUG) {
+				ctx.globalAlpha = 0.1;
+			}
 
 			if (this.rect.size.eq(Andesine._CACHE_VEC2_ZERO)) {
+				// サイズ0なら描画しない
+				return false;
+			}
+			// 描画するかのフラグ
+			const isDrawBG = setting.fillStyle !== "transparent";
+			const isDrawBD = setting.strokeStyle !== "transparent" && this.bdWidth > 0;
+
+			// 描くものが無ければ描画しない
+			if (!isDrawBG && !isDrawBD) {
 				return false;
 			}
 
@@ -2603,18 +3486,32 @@ class Andesine {
 				rad = Math.min(this.rect.width, this.rect.height) / 2;
 			}
 			if (rad > 0) {
-				if (setting.fillStyle !== "transparent") {
+				// 丸角
+				if (isDrawBG || isDrawBD) {
 					Andesine.createRoundRectPath(ctx, ...pos.array, this.rect.width, this.rect.height, rad);
+				}
+				if (isDrawBD) {
+					ctx.stroke();
+				}
+				if (isDrawBG) {
 					ctx.fill();
 				}
 			} else {
-				if (setting.fillStyle !== "transparent") {
+				// 普通の四角
+				if (isDrawBD) {
+					ctx.strokeRect(pos.x, pos.y, this.rect.width, this.rect.height);
+				}
+				if (isDrawBG) {
 					ctx.fillRect(pos.x, pos.y, this.rect.width, this.rect.height);
 				}
 			}
 			return false;
 		}
 
+		/**
+		 * 回転後の相対的な座標(左上)を取得
+		 * @returns {InstanceType<typeof Andesine.Vector2>}
+		 */
 		rotatedPosition() {
 			const parent = this.parent;
 			if (!parent) {
@@ -2622,11 +3519,8 @@ class Andesine {
 			}
 			const parent_pos = parent.relative();
 			const child_size = Andesine.Vector2.div(this.rect.size, 2);
-
 			const pCenterPos = Andesine.Vector2.add(parent_pos, Andesine.Vector2.div(parent.rect.size, 2));
-			const rotatedPos = Andesine.Vector2.sub(Andesine.Vector2.sum(this.rect.position, parent_pos, child_size), pCenterPos).matrix(parent.displayAngle);
-
-			return rotatedPos.add(pCenterPos).sub(child_size);
+			return Andesine.Vector2.sub(Andesine.Vector2.sum(this.rect.position, parent_pos, child_size), pCenterPos).matrix(parent.displayAngle).add(pCenterPos).sub(child_size);
 		}
 
 		/**
@@ -2634,6 +3528,9 @@ class Andesine {
 		 * @returns {InstanceType<typeof Andesine.Vector2>}
 		 */
 		relative() {
+			if (this._cache_relative) {
+				return this._cache_relative.clone();
+			}
 			let pos;
 			if (this.parent) {
 				pos = this.rotatedPosition();
@@ -2663,6 +3560,7 @@ class Andesine {
 					pos.y -= this.rect.height;
 					break;
 			}
+			this._cache_relative = pos.clone();
 			return pos;
 		}
 
@@ -2749,65 +3647,154 @@ class Andesine {
 			} else {
 				obj = other;
 			}
-			const rect = new Andesine.Rectangle(this.relative(), this.rect.size);
-			return rect.isInside(obj, isFull);
+			if (!this._cache_Rect) {
+				this._cache_Rect = new Andesine.Rectangle(this.relative(), this.rect.size);
+			}
+			return this._cache_Rect.isInside(obj, isFull);
 		}
 
 		/**
-		 * 移動アニメーション
+		 * キャンバス内か判定
+		 * @returns {boolean}
+		 */
+		isInCanvas() {
+			if (this._cache_isInCanvas !== null) {
+				return this._cache_isInCanvas;
+			}
+
+			const rect = this.canvasObject?.size;
+			if (!rect) {
+				return false;
+			}
+			if (!this._cache_Rect) {
+				this._cache_Rect = new Andesine.Rectangle(this.relative(), this.rect.size);
+			}
+			let ndAngle = this.normalizeDisplayAngle;
+			if (ndAngle >= Andesine.PI) {
+				ndAngle -= Andesine.PI;
+			}
+			if (Andesine.DEBUG) {
+				Andesine._debug_collision_detection_setting(this.ctx);
+			}
+			if (Jasc.isRadiansEqual(ndAngle, 0, 0.01, true)) {
+				// 0度 or 180度
+				if (Andesine.DEBUG) {
+					this.ctx.strokeRect(this._cache_Rect.x, this._cache_Rect.y, this._cache_Rect.width, this._cache_Rect.height);
+					Andesine._debug_restore_data_setting();
+				}
+				return rect.isInside(this._cache_Rect);
+			}
+			if (Jasc.isRadiansEqual(ndAngle, Andesine.HALF_PI, 0.01, true)) {
+				// 90度 or 270度
+				const rotateRect = this._cache_Rect.rotate90();
+				if (Andesine.DEBUG) {
+					this.ctx.strokeRect(rotateRect.x, rotateRect.y, rotateRect.width, rotateRect.height);
+					Andesine._debug_restore_data_setting();
+				}
+				return rect.isInside(rotateRect);
+			}
+			// その他
+			const circle = this._cache_Rect.toCircle();
+			if (Andesine.DEBUG) {
+				const ctx = this.ctx;
+				ctx.beginPath();
+				ctx.arc(circle.x, circle.y, circle.radius, 0, Andesine.TAU);
+				ctx.closePath();
+				ctx.stroke();
+				Andesine._debug_restore_data_setting();
+			}
+			const flag = circle.isInside(rect);
+			this._cache_isInCanvas = flag;
+			return flag;
+		}
+
+		//
+
+		/**
+		 * アニメーション作成
 		 * @param {object} [opt] - オプション
+		 * @param {string} [opt.name] - アニメーション名(外部参照用)
 		 * @param {Andesine.Vector2 | null} [opt.position=null] - 終了座標(任意)
 		 * @param {Andesine.Vector2 | null} [opt.size=null] - 終了サイズ(任意)
 		 * @param {number | null} [opt.angle=null] - 終了角度(任意)
-		 * @param  {number | null} [opt.alpha=null] - 終了透明度(任意)
+		 * @param {number | null} [opt.alpha=null] - 終了透明度(任意)
 		 * @param {number} [opt.frameTime=60] - 所要フレーム数
-		 * @param {string} [opt.type="smooth"] - アニメーションタイプ (smooth | leap)
+		 * @param {"smooth" | "leap"} [opt.type="smooth"] - 動作の種類
+		 * @param {"set" | "add" | "addSet"} [opt.mode="add"] - 値の計算方法(add:[1->4]:4, addSet:[1->4]:1+2+3+4)
+		 * @param {number | "infinite"} [opt.loop=1] - 繰り返し回数(infiniteの場合Promiseは解決されない)
+		 * @param {function(InstanceType<typeof Andesine.Box>):undefined} [opt.callback=null] - コールバック関数(通常時はpromiseを推奨)
 		 * @returns {Promise<InstanceType<typeof Andesine.Box>>}
 		 */
-		createAnimation({ position = null, size = null, angle = null, alpha = null, frameTime = 60, type = "smooth" }) {
-			if (this._animationObj) {
-				this._animationObj.stop(true);
+		createAnimation({ name = "", position = null, size = null, angle = null, alpha = null, frameTime = 60, type = "smooth", mode = "add", loop = 1, callback = null } = {}) {
+			const _this = this;
+
+			if (!name) {
+				name = Jasc.setAssociativeAutoName(this._animationPromiseData, null, "andesine");
 			}
-			return new Promise((resolve) => {
-				const _this = this;
-				this._animationObj = new Andesine.Animation(this, {
+			if (this._animationObjData[name]) {
+				this._animationObjData[name].stop(true);
+			}
+
+			let _callback = null;
+			if (typeof callback === "function") {
+				_callback = callback;
+			}
+
+			const pro = new Promise((resolve) => {
+				_this._animationObjData[name] = new Andesine.Animation(_this, {
 					position,
 					size,
 					angle,
 					alpha,
 					frameTime,
 					type,
+					mode,
+					loop,
 					callback() {
+						delete _this._animationObjData[name];
+						delete _this._animationPromiseData[name];
+						_this._checkChangeObject();
 						resolve(_this);
+						_callback?.(_this);
 					},
 				});
 			});
+			this._animationPromiseData[name] = pro;
+			return pro;
 		}
 
 		/**
-		 * アニメーションを再度実行
-		 * @returns {Promise<InstanceType<typeof Andesine.Box>>}
+		 * アニメーション実行待機
+		 * @param {string | string[]} [name] - アニメーション名(無しで全体待機)
+		 * @returns {Promise<InstanceType<typeof Andesine.Box>> | Promise<InstanceType<typeof Andesine.Box>[]>}
 		 */
-		restartAnimation() {
-			return new Promise((resolve) => {
-				if (this._animationObj) {
-					const _this = this;
-					this._animationObj.restart(() => {
-						resolve(_this);
-					});
-				} else {
-					resolve(this);
+		waitAnimation(name) {
+			if (typeof name === "string") {
+				if (this._animationObjData[name]) {
+					return this._animationPromiseData[name];
 				}
-			});
+				return Promise.resolve(this);
+			} else if (Array.isArray(name)) {
+				const arr = [];
+				for (let i = 0, li = name.length; i < li; i++) {
+					if (this._animationObjData[name[i]]) {
+						arr.push(this._animationPromiseData[name[i]]);
+					}
+				}
+				return Promise.all(arr);
+			} else if (name == null) {
+				return Promise.all(Object.values(this._animationPromiseData));
+			}
+			return Promise.reject(new Error(`アニメーション名が不正です: ${name}`));
 		}
 
 		/**
 		 * アニメーションオブジェクトを取得
-		 * @returns {InstanceType<typeof Andesine.Animation> | null}
+		 * @returns {Object<string, InstanceType<typeof Andesine.Animation> | null>}
 		 * @readonly
 		 */
 		get animation() {
-			return this._animationObj;
+			return this._animationObjData;
 		}
 	};
 
@@ -2853,12 +3840,14 @@ class Andesine {
 	 * @param {object} [opt] - オプション
 	 * @param {CanvasRenderingContext2D | String} [opt.ctx]
 	 * @param {number} [opt.layer=0] - レイヤー番号
+	 * @param {Andesine.DrawObject} [opt.parent] - 親オブジェクト
+	 * @param {Andesine.Vector2} [opt.position] - 座標
 	 * @param {Andesine.Vector2 | "full"} [opt.size="full"] - サイズ
 	 * @returns {InstanceType<typeof Andesine.Frame>}
 	 * @static
 	 */
-	static createFrame({ ctx, layer = 0, size = "full" } = {}) {
-		return new Andesine.Frame({ ctx, layer: layer, size: size });
+	static createFrame({ ctx, layer = 0, parent = null, position = Andesine.Vector2.zero, size = "full" } = {}) {
+		return new Andesine.Frame({ ctx, layer, parent, position, size: size });
 	}
 	/**
 	 * 描画フレーム
@@ -2867,18 +3856,29 @@ class Andesine {
 	 * @param {object} [opt] - オプション
 	 * @param {CanvasRenderingContext2D | String} [opt.ctx]
 	 * @param {number} [opt.layer] - レイヤー番号
+	 * @param {Andesine.DrawObject} [opt.parent] - 親オブジェクト
+	 * @param {"off" | "gc" | "on"} [opt.hiddenToDestroy="off"] - 非表示時に強制削除(自身が非表示の時点で削除)
+	 * @param {Andesine.Mask} [opt.mask] - クリッピングマスク
 	 * @param {Andesine.Vector2} [opt.position] - 座標
 	 * @param {Andesine.Vector2} [opt.size] - サイズ
 	 * @param {string} [opt.bg=""] - 背景色
+	 * @param {string} [opt.bgBd=""] - 枠線
+	 * @param {number} [opt.bgBdWidth=1] - 枠線の太さ
 	 * @param {number | "max"} [opt.radius=0] - 丸角
 	 * @param {"left" | "center" | "right"} [opt.boxAlign="left"] - 描画起点位置
 	 * @param {"top" | "middle" | "bottom"} [opt.boxBaseLine="top"] - 描画起点位置
 	 * @param {number} [opt.alpha=1] - 透明度
+	 * @param {boolean} [opt.useInnerCanvas=false] - 子供を別キャンバスで描画する
+	 * @param {"none" | "auto" | "scroll" | "dynamic" | "noBar"} [opt.overflowX="none"] - x座標の画面外の子供の表示方法を変更(useInnerCanvas: true の場合のみ有効)
+	 * @param {"none" | "auto" | "scroll" | "dynamic" | "noBar"} [opt.overflowY="none"] - y座標の画面外の子供の表示方法を変更(useInnerCanvas: true の場合のみ有効)
+	 * @param {boolean} [opt.overrideScrollContents=false] - スクロールバーをコンテンツに被せて描画
 	 * @returns {Andesine.Frame}
 	 */
 	static Frame = class extends Andesine.Box {
-		constructor({ ctx, layer = 0, position = Andesine.Vector2.zero, size = Andesine.Vector2.zero, bg = "", radius = 0, boxAlign = "left", boxBaseLine = "top", alpha = 1 } = {}) {
-			super({ ctx, layer, position, size, bg, radius, boxAlign, boxBaseLine, alpha });
+		constructor({ ctx, layer = 0, parent = null, hiddenToDestroy = "off", mask = null, position = Andesine.Vector2.zero, size = Andesine.Vector2.zero, bg = "", bgBd = "", bgBdWidth = 1, radius = 0, boxAlign = "left", boxBaseLine = "top", alpha = 1, useInnerCanvas = false, overflowX = "none", overflowY = "none", overrideScrollContents = false } = {}) {
+			super({ ctx, layer, parent, hiddenToDestroy, mask, position, size, bg, bgBd, bgBdWidth, radius, boxAlign, boxBaseLine, alpha });
+
+			// TODO:実装
 		}
 	};
 
@@ -2896,16 +3896,20 @@ class Andesine {
 	 * @static
 	 */
 	static createRoundRectPath(ctx, x, y, w, h, r) {
+		const xr = x + r;
+		const yr = y + r;
+		const xw = x + w;
+		const yh = y + h;
 		ctx.beginPath();
-		ctx.moveTo(x + r, y);
-		ctx.lineTo(x + w - r, y);
-		ctx.arc(x + w - r, y + r, r, Math.PI * (3 / 2), 0, false);
-		ctx.lineTo(x + w, y + h - r);
-		ctx.arc(x + w - r, y + h - r, r, 0, Math.PI * (1 / 2), false);
-		ctx.lineTo(x + r, y + h);
-		ctx.arc(x + r, y + h - r, r, Math.PI * (1 / 2), Math.PI, false);
-		ctx.lineTo(x, y + r);
-		ctx.arc(x + r, y + r, r, Math.PI, Math.PI * (3 / 2), false);
+		ctx.moveTo(xr, y);
+		ctx.lineTo(xw - r, y);
+		ctx.arc(xw - r, yr, r, Andesine.THREE_HALF_PI, 0, false);
+		ctx.lineTo(xw, yh - r);
+		ctx.arc(xw - r, yh - r, r, 0, Andesine.HALF_PI, false);
+		ctx.lineTo(xr, yh);
+		ctx.arc(xr, yh - r, r, Andesine.HALF_PI, Andesine.PI, false);
+		ctx.lineTo(x, yr);
+		ctx.arc(xr, yr, r, Andesine.PI, Andesine.THREE_HALF_PI, false);
 		ctx.closePath();
 	}
 
@@ -2916,11 +3920,18 @@ class Andesine {
 	 * @param {object} [opt] - オプション
 	 * @param {CanvasRenderingContext2D | String} [opt.ctx]
 	 * @param {number} [opt.layer] - レイヤー番号
+	 * @param {Andesine.DrawObject} [opt.parent] - 親オブジェクト
+	 * @param {"off" | "gc" | "on"} [opt.hiddenToDestroy="off"] - 非表示時に強制削除(自身が非表示の時点で削除)
+	 * @param {Andesine.Mask} [opt.mask] - クリッピングマスク
 	 * @param {Andesine.Vector2} [opt.position] - 座標
 	 * @param {Andesine.Vector2} [opt.size] - サイズ
 	 * @param {string} [opt.text=""] - テキスト
 	 * @param {string} [opt.fg="#000"] - 文字色
+	 * @param {string} [opt.fgBd=""] - 文字縁取り
+	 * @param {number} [opt.fgBdWidth=1] - 文字縁取りの太さ
 	 * @param {string} [opt.bg=""] - 背景色
+	 * @param {string} [opt.bgBd=""] - 枠線
+	 * @param {number} [opt.bgBdWidth=1] - 枠線の太さ
 	 * @param {number | "max"} [opt.radius=0] - 丸角
 	 * @param {number} [opt.angle=0] - 角度
 	 * @param {string} [opt.align="left"] - テキストの配置
@@ -2942,11 +3953,18 @@ class Andesine {
 	 * @param {object} [opt] - オプション
 	 * @param {CanvasRenderingContext2D | String} [opt.ctx]
 	 * @param {number} [opt.layer] - レイヤー番号
+	 * @param {Andesine.DrawObject} [opt.parent] - 親オブジェクト
+	 * @param {"off" | "gc" | "on"} [opt.hiddenToDestroy="off"] - 非表示時に強制削除(自身が非表示の時点で削除)
+	 * @param {Andesine.Mask} [opt.mask] - クリッピングマスク
 	 * @param {Andesine.Vector2} [opt.position] - 座標
 	 * @param {Andesine.Vector2} [opt.size] - サイズ
 	 * @param {string} [opt.text=""] - テキスト
 	 * @param {string} [opt.fg="#000"] - 文字色
+	 * @param {string} [opt.fgBd=""] - 文字縁取り
+	 * @param {number} [opt.fgBdWidth=1] - 文字縁取りの太さ
 	 * @param {string} [opt.bg=""] - 背景色
+	 * @param {string} [opt.bgBd=""] - 枠線
+	 * @param {number} [opt.bgBdWidth=1] - 枠線の太さ
 	 * @param {number | "max"} [opt.radius=0] - 丸角
 	 * @param {number} [opt.angle=0] - 角度
 	 * @param {string} [opt.align="left"] - テキストの配置
@@ -2958,10 +3976,12 @@ class Andesine {
 	 * @returns {Andesine.TextBox}
 	 */
 	static TextBox = class extends Andesine.Box {
-		constructor({ ctx, layer = 0, position = Andesine.Vector2.zero, size = Andesine.Vector2.zero, text = "", fg = "#000", bg = "", radius = 0, angle = 0, align = "left", lineHeight = 0, boxAlign = "left", boxBaseLine = "top", returnType = "max", alpha = 1 }) {
-			super({ ctx, layer, position, size, bg, radius, angle, boxAlign, boxBaseLine, alpha });
+		constructor({ ctx, layer = 0, parent = null, hiddenToDestroy = "off", mask = null, position = Andesine.Vector2.zero, size = Andesine.Vector2.zero, text = "", fg = "#000", fgBd = "", fgBdWidth = 1, bg = "", bgBd = "", bgBdWidth = 1, radius = 0, angle = 0, align = "left", lineHeight = 0, boxAlign = "left", boxBaseLine = "top", returnType = "max", alpha = 1 }) {
+			super({ ctx, layer, parent, hiddenToDestroy, mask, position, size, bg, bgBd, bgBdWidth, radius, angle, boxAlign, boxBaseLine, alpha });
 			this.text = text;
 			this.fg = fg;
+			this.fgBd = fgBd;
+			this.fgBdWidth = fgBdWidth;
 			this.align = align;
 			this.lineHeight = lineHeight;
 			this.returnType = returnType;
@@ -2990,24 +4010,69 @@ class Andesine {
 			}
 			const ctx = this.ctx;
 			const pos = this.relative();
-			ctx.fillStyle = this.fg;
+			if (this.fg) {
+				ctx.fillStyle = this.fg;
+				if (this.fg === "transparent") {
+					this.fg = "";
+				}
+			}
+			if (this.fgBd) {
+				ctx.strokeStyle = this.fgBd;
+				if (this.fgBd === "transparent") {
+					this.fgBd = "";
+				}
+				ctx.lineWidth = this.fgBdWidth;
+			}
+
+			// 描画するかのフラグ
+			const isDrawFG = !!this.fg;
+			const isDrawFGBd = !!this.fgBd && this.fgBdWidth > 0;
+
+			// 描くものが無ければ描画しない
+			if (!isDrawFG && !isDrawFGBd) {
+				return false;
+			}
+
+			const width = this.rect.width;
 			switch (this.returnType) {
 				case "manual":
 					// 手動改行
-					Andesine.manualFillText(ctx, this.text, pos, this.rect.width, this.align, this.lineHeight);
+					Andesine.manualFillText(ctx, this.text, pos, width, this.align, this.lineHeight, [isDrawFG, isDrawFGBd]);
 					break;
 				case "auto":
 					// 自動改行
-					Andesine.fixedFillText(ctx, this.text, pos, this.rect.width, this.align, this.lineHeight);
+					Andesine.fixedFillText(ctx, this.text, pos, width, this.align, this.lineHeight, [isDrawFG, isDrawFGBd]);
 					break;
 				case "max":
 					// 横幅制限(改行なし)
-					ctx.fillText(this.text, pos.x, pos.y, this.rect.width);
+					if (Andesine.DEBUG) {
+						Andesine._debug_text_size_setting(ctx);
+						const textData = ctx.measureText(this.text);
+						ctx.strokeRect(pos.x, pos.y, width, textData.actualBoundingBoxDescent);
+						Andesine._debug_restore_data_setting();
+					}
+					if (isDrawFGBd) {
+						ctx.strokeText(this.text, pos.x, pos.y, width);
+					}
+					if (isDrawFG) {
+						ctx.fillText(this.text, pos.x, pos.y, width);
+					}
 					break;
 				case "none":
 				default:
 					// 改行なし
-					ctx.fillText(this.text, pos.x, pos.y);
+					if (Andesine.DEBUG) {
+						Andesine._debug_text_size_setting(ctx);
+						const textData = ctx.measureText(this.text);
+						ctx.strokeRect(pos.x, pos.y, textData.actualBoundingBoxRight, textData.actualBoundingBoxDescent);
+						Andesine._debug_restore_data_setting();
+					}
+					if (isDrawFGBd) {
+						ctx.strokeText(this.text, pos.x, pos.y);
+					}
+					if (isDrawFG) {
+						ctx.fillText(this.text, pos.x, pos.y);
+					}
 					break;
 			}
 			return false;
@@ -3024,11 +4089,13 @@ class Andesine {
 	 * @param {number} [lineHight=0]
 	 * @static
 	 */
-	static manualFillText(ctx, text, pos, width, align = "left", lineHight = 0) {
-		//Andesine._REGEXP_RETURN
+	static manualFillText(ctx, text, pos, width, align = "left", lineHight = 0, drawFlags = [true, false]) {
 		const _pos = Andesine.Vector2.convert(pos);
 		ctx.textBaseline = "top";
 		ctx.textAlign = "left";
+
+		const isDrawFG = drawFlags[0];
+		const isDrawFGBd = drawFlags[1];
 
 		const spText = text.split("\n");
 		let padding,
@@ -3053,7 +4120,19 @@ class Andesine {
 			} else {
 				padding = 0;
 			}
-			ctx.fillText(t, _pos.x + padding, _pos.y + _sumLineHight - addHeight);
+			const x = _pos.x + padding;
+			const y = _pos.y + _sumLineHight - addHeight;
+			if (Andesine.DEBUG) {
+				Andesine._debug_text_size_setting(ctx);
+				ctx.strokeRect(x, y, lineWidth, addHeight);
+				Andesine._debug_restore_data_setting();
+			}
+			if (isDrawFGBd) {
+				ctx.strokeText(t, x, y);
+			}
+			if (isDrawFG) {
+				ctx.fillText(t, x, y);
+			}
 		}
 	}
 
@@ -3068,7 +4147,7 @@ class Andesine {
 	 * @param {number} [lineHight=0]
 	 * @static
 	 */
-	static fixedFillText(ctx, text, pos, width, align = "left", lineHight = 0) {
+	static fixedFillText(ctx, text, pos, width, align = "left", lineHight = 0, drawFlags = [true, false]) {
 		let column = [
 				{
 					text: "",
@@ -3079,6 +4158,9 @@ class Andesine {
 			line = 0;
 
 		const _pos = Andesine.Vector2.convert(pos);
+
+		const isDrawFG = drawFlags[0];
+		const isDrawFGBd = drawFlags[1];
 
 		ctx.textBaseline = "top";
 		ctx.textAlign = "left";
@@ -3120,9 +4202,53 @@ class Andesine {
 			} else {
 				padding = 0;
 			}
-			ctx.fillText(column[i].text, _pos.x + padding, _pos.y + _sumLineHight - addHeight, width);
+			const x = _pos.x + padding;
+			const y = _pos.y + _sumLineHight - addHeight;
+			if (Andesine.DEBUG) {
+				Andesine._debug_text_size_setting(ctx);
+				ctx.strokeRect(x, y, lineWidth, addHeight);
+				Andesine._debug_restore_data_setting();
+			}
+			if (isDrawFGBd) {
+				ctx.strokeText(column[i].text, x, y, width);
+			}
+			if (isDrawFG) {
+				ctx.fillText(column[i].text, x, y, width);
+			}
 		}
 	}
+
+	// ####################################################################################################
+
+	/**
+	 * 円形(描画オブジェクト)
+	 * @memberof Andesine
+	 * @param {object} [opt] - オプション
+	 * @param {CanvasRenderingContext2D | String} [opt.ctx]
+	 * @param {number} [opt.layer] - レイヤー番号
+	 * @param {Andesine.DrawObject} [opt.parent] - 親オブジェクト
+	 * @param {"off" | "gc" | "on"} [opt.hiddenToDestroy="off"] - 非表示時に強制削除(自身が非表示の時点で削除)
+	 * @param {Andesine.Mask} [opt.mask] - クリッピングマスク
+	 * @param {Andesine.Vector2} [opt.position] - 座標
+	 * @param {number | Andesine.Vector2} [opt.radius] - 半径
+	 * @param {string} [opt.bg=""] - 背景色
+	 * @param {string} [opt.bgBd=""] - 枠線
+	 * @param {number} [opt.bgBdWidth=1] - 枠線の太さ
+	 * @param {number} [opt.angle=0] - 角度
+	 * @param {"left" | "center" | "right"} [opt.boxAlign="center"] - 描画起点位置
+	 * @param {"top" | "middle" | "bottom"} [opt.boxBaseLine="middle"] - 描画起点位置
+	 * @param {number} [opt.alpha=1] - 透明度
+	 * @returns {Andesine.Disc}
+	 */
+	static Disc = class extends Andesine.DrawObject {
+		_animationObjList = [];
+
+		constructor({ ctx, layer = 0, parent = null, hiddenToDestroy = "off", mask = null, position = Andesine.Vector2.zero, radius = Andesine.Vector2.zero, bg = "", bgBd = "", bgBdWidth = 1, angle = 0, boxAlign = "left", boxBaseLine = "top", alpha = 1 }) {
+			super({ ctx, layer, parent, hiddenToDestroy, mask });
+		}
+
+		// TODO: 円形を作る
+	};
 
 	// ####################################################################################################
 
@@ -3132,9 +4258,14 @@ class Andesine {
 	 * @param {object} [opt] - オプション
 	 * @param {CanvasRenderingContext2D | String} [opt.ctx]
 	 * @param {number} [opt.layer] - レイヤー番号
+	 * @param {Andesine.DrawObject} [opt.parent] - 親オブジェクト
+	 * @param {"off" | "gc" | "on"} [opt.hiddenToDestroy="off"] - 非表示時に強制削除(自身が非表示の時点で削除)
+	 * @param {Andesine.Mask} [opt.mask] - クリッピングマスク
 	 * @param {Andesine.Vector2} [opt.position] - 座標
 	 * @param {Andesine.Vector2} [opt.size] - サイズ
 	 * @param {string} [opt.bg=""] - 背景色
+	 * @param {string} [opt.bgBd=""] - 枠線
+	 * @param {number} [opt.bgBdWidth=1] - 枠線の太さ
 	 * @param {number | "max"} [opt.radius=0] - 丸角
 	 * @param {"left" | "center" | "right"} [opt.boxAlign="left"] - 描画起点位置
 	 * @param {"top" | "middle" | "bottom"} [opt.boxBaseLine="top"] - 描画起点位置
@@ -3151,9 +4282,14 @@ class Andesine {
 	 * @param {object} [opt] - オプション
 	 * @param {CanvasRenderingContext2D | String} [opt.ctx]
 	 * @param {number} [opt.layer] - レイヤー番号
+	 * @param {Andesine.DrawObject} [opt.parent] - 親オブジェクト
+	 * @param {"off" | "gc" | "on"} [opt.hiddenToDestroy="off"] - 非表示時に強制削除(自身が非表示の時点で削除)
+	 * @param {Andesine.Mask} [opt.mask] - クリッピングマスク
 	 * @param {Andesine.Vector2} [opt.position] - 座標
 	 * @param {Andesine.Vector2} [opt.size] - サイズ
 	 * @param {string} [opt.bg=""] - 背景色
+	 * @param {string} [opt.bgBd=""] - 枠線
+	 * @param {number} [opt.bgBdWidth=1] - 枠線の太さ
 	 * @param {number | "max"} [opt.radius=0] - 丸角
 	 * @param {number} [opt.angle=0] - 角度
 	 * @param {"left" | "center" | "right"} [opt.boxAlign="left"] - 描画起点位置
@@ -3165,8 +4301,8 @@ class Andesine {
 	static ImageBox = class extends Andesine.Box {
 		img = null;
 
-		constructor({ ctx, layer = 0, position = Andesine.Vector2.zero, size = Andesine.Vector2.zero, bg = "", radius = 0, angle = 0, boxAlign = "left", boxBaseLine = "top", alpha = 1, aspectType = "width" } = {}) {
-			super({ ctx, layer, position, size, bg, radius, angle, boxAlign, boxBaseLine, alpha });
+		constructor({ ctx, layer = 0, parent = null, hiddenToDestroy = "off", mask = null, position = Andesine.Vector2.zero, size = Andesine.Vector2.zero, bg = "", bgBd = "", bgBdWidth = 1, radius = 0, angle = 0, boxAlign = "left", boxBaseLine = "top", alpha = 1, aspectType = "width" } = {}) {
+			super({ ctx, layer, parent, hiddenToDestroy, mask, position, size, bg, bgBd, bgBdWidth, radius, angle, boxAlign, boxBaseLine, alpha });
 
 			this.aspectType = aspectType;
 		}
@@ -3194,68 +4330,86 @@ class Andesine {
 		}
 
 		draw() {
-			super.draw();
+			if (super.draw()) {
+				return true;
+			}
+			if (!this.img) {
+				return false;
+			}
 			const ctx = this.ctx;
 			const pos = this.relative();
-			if (this.img) {
-				let sw = 0,
-					sh = 0;
-				const rect = this.rect;
-				let af = "";
-				switch (this.aspectType) {
-					case "origin":
-						sw = this.img.width;
-						sh = this.img.height;
-						break;
-					case "manual":
-						sw = rect.width;
-						sh = rect.height;
-						break;
-					case "max":
-						if (rect.width == rect.height) {
-							if (this.img.width > this.img.height) {
-								af = "width";
-							} else {
-								af = "height";
-							}
-						} else if (rect.width > rect.height) {
+			let sw = 0,
+				sh = 0;
+			const rect = this.rect;
+			let af = "";
+			switch (this.aspectType) {
+				case "origin":
+					sw = this.img.width;
+					sh = this.img.height;
+					break;
+				case "manual":
+					sw = rect.width;
+					sh = rect.height;
+					break;
+				case "max":
+					if (rect.width == rect.height) {
+						if (this.img.width > this.img.height) {
 							af = "width";
 						} else {
 							af = "height";
 						}
-						break;
-					case "min":
-						if (rect.width == rect.height) {
-							if (this.img.width < this.img.height) {
-								af = "width";
-							} else {
-								af = "height";
-							}
-						} else if (rect.width < rect.height) {
+					} else if (rect.width > rect.height) {
+						af = "width";
+					} else {
+						af = "height";
+					}
+					break;
+				case "min":
+					if (rect.width == rect.height) {
+						if (this.img.width < this.img.height) {
 							af = "width";
 						} else {
 							af = "height";
 						}
-						break;
-					case "width":
-					case "height":
-						af = this.aspectType;
-						break;
-				}
-				switch (af) {
-					case "width":
-						sw = rect.width;
-						sh = rect.width * (this.img.height / this.img.width);
-						break;
-					case "height":
-						sw = rect.height * (this.img.width / this.img.height);
-						sh = rect.height;
-						break;
-				}
-				rect.size.x = sw;
-				rect.size.y = sh;
-				ctx.drawImage(this.img, pos.x, pos.y, sw, sh);
+					} else if (rect.width < rect.height) {
+						af = "width";
+					} else {
+						af = "height";
+					}
+					break;
+				case "width":
+				case "height":
+					af = this.aspectType;
+					break;
 			}
+			switch (af) {
+				case "width":
+					sw = rect.width;
+					sh = rect.width * (this.img.height / this.img.width);
+					break;
+				case "height":
+					sw = rect.height * (this.img.width / this.img.height);
+					sh = rect.height;
+					break;
+			}
+			rect.size.x = sw;
+			rect.size.y = sh;
+
+			let rad = this.radius;
+			if (rad === "max") {
+				rad = Math.min(sw, sh) / 2;
+			}
+			if (rad > 0) {
+				// 丸角
+				ctx.save();
+				Andesine.createRoundRectPath(ctx, ...pos.array, sw, sh, rad);
+				ctx.clip();
+			}
+			ctx.drawImage(this.img, pos.x, pos.y, sw, sh);
+			if (rad > 0) {
+				ctx.restore();
+			}
+			return false;
 		}
 	};
 
@@ -3264,15 +4418,29 @@ class Andesine {
 	/**
 	 * 待機
 	 * @memberof Andesine
-	 * @param {func} func - コールバック
-	 * @param {number} [frameTime=1000] - 待機時間(fps)
+	 * @param {object} [opt] - オプション
+	 * @param {InstanceType<typeof Andesine.DrawObject>} [opt.parent] - 親オブジェクト
+	 * @param {function():undefined} [opt.func] - コールバック
+	 * @param {number} [opt.frameTime=1000] - 待機時間(fps)
+	 * @returns {InstanceType<typeofAndesine.WaitObj>}
+	 */
+	createWait(opt) {
+		return new Andesine.WaitObj(opt);
+	}
+	/**
+	 * 待機
+	 * @memberof Andesine
+	 * @param {object} [opt] - オプション
+	 * @param {InstanceType<typeof Andesine.DrawObject>} [opt.parent] - 親オブジェクト
+	 * @param {function():undefined} [opt.func] - コールバック
+	 * @param {number} [opt.frameTime=1000] - 待機時間(fps)
 	 * @returns {Andesine.WaitObj}
 	 */
 	static WaitObj = class extends Andesine.DrawObject {
 		anim = 0;
 
-		constructor(func, frameTime = 1000) {
-			super();
+		constructor({ parent = null, func, frameTime = 1000 }) {
+			super({ parent });
 			this.func = func;
 			this.wait = frameTime;
 		}
@@ -3292,44 +4460,65 @@ class Andesine {
 	/**
 	 * アニメーション
 	 * @memberof Andesine
-	 * @param  {InstanceType<typeof Andesine.DrawObject>} _this - 対象オブジェクト
-	 * @param  {object} [opt] - オプション
-	 * @param  {Andesine.Vector2 | null} [opt.position=null] - 終了座標(任意)
-	 * @param  {Andesine.Vector2 | null} [opt.size=null] - 終了サイズ(任意)
-	 * @param  {number | null} [opt.angle=null] - 終了角度(任意)
-	 * @param  {number | null} [opt.alpha=null] - 終了透明度(任意)
-	 * @param  {number} [opt.frameTime=60] - 所要フレーム数
-	 * @param  {string} [opt.type="smooth"] - アニメーションタイプ (smooth | leap)
-	 * @param  {function} [opt.callback] - 終了時コールバック
+	 * @param {InstanceType<typeof Andesine.DrawObject>} _this - 対象オブジェクト
+	 * @param {object} [opt] - オプション
+	 * @param {Andesine.Vector2 | null} [opt.position=null] - 終了座標(任意)
+	 * @param {Andesine.Vector2 | null} [opt.size=null] - 終了サイズ(任意)
+	 * @param {number | null} [opt.angle=null] - 終了角度(任意)
+	 * @param {number | null} [opt.alpha=null] - 終了透明度(任意)
+	 * @param {number} [opt.frameTime=60] - 所要フレーム数
+	 * @param {string} [opt.type="smooth"] - アニメーションタイプ (smooth | leap)
+	 * @param {"set" | "add" | "addSet"} [opt.mode="add"] - 値の計算方法(add:[1->4]:4, addSet:[1->4]:1+2+3+4)
+	 * @param {number | "infinite"} [opt.loop=1] - 繰り返し回数(infiniteの場合Promiseは解決されない)
+	 * @param {function():undefined} [opt.callback] - 終了時コールバック
 	 * @returns {Andesine.Animation}
 	 */
 	static Animation = class {
 		#callback = null;
+		#oldT = 0;
 
 		isDestroy = false;
 		objType = null;
 		nowFrame = 0;
 
-		constructor(_this, { position = null, size = null, angle = null, alpha = null, frameTime = 60, type = "smooth", callback } = {}) {
+		constructor(_this, { position = null, size = null, angle = null, alpha = null, frameTime = 60, type = "smooth", mode = "add", loop = 1, callback } = {}) {
 			this.animObj = _this;
 			if (this.animObj instanceof Andesine.Box) {
 				this.objType = "box";
 			}
-			switch (this.objType) {
-				case "box":
-					this.startPosition = this.animObj.rect.position.clone();
-					this.startSize = this.animObj.rect.size.clone();
+			this.mode = mode;
+			switch (this.mode) {
+				case "set":
+					switch (this.objType) {
+						case "box":
+							this.startPosition = this.animObj.rect.position.clone();
+							this.startSize = this.animObj.rect.size.clone();
+							break;
+						default:
+							this.startPosition = Andesine.Vector2.zero;
+							this.startSize = Andesine.Vector2.zero;
+					}
+
+					this.startAngle = this.animObj.angle;
+					this.startAlpha = this.animObj.alpha;
 					break;
-				default:
+				case "add":
+				case "addSet":
 					this.startPosition = Andesine.Vector2.zero;
 					this.startSize = Andesine.Vector2.zero;
+					this.startAngle = 0;
+					this.startAlpha = 0;
 			}
-			this.position = position;
-			this.size = size;
+			this.position = Andesine.Vector2.convert(position);
+			this.size = Andesine.Vector2.convert(size);
 			this.angle = angle;
-			this.startAngle = this.animObj.angle;
 			this.alpha = alpha;
-			this.startAlpha = this.animObj.alpha;
+			//
+			if (loop === "infinite") {
+				loop = Infinity;
+			}
+			this.nowLoop = loop;
+			//
 			this.frameTime = frameTime;
 			this.type = type;
 			this.#callback = callback;
@@ -3337,79 +4526,76 @@ class Andesine {
 
 		/**
 		 * フレームごと実行
-		 * @returns {InstanceType<typeof Andesine.Vector2>}
+		 * @param {number} [addFrame=1] - フレーム増加量
+		 * @returns {undefined}
 		 */
-		update() {
+		update(addFrame = 1) {
 			if (this.isDestroy) {
 				return;
 			}
-			if (this.nowFrame >= this.frameTime) {
-				this.nowFrame = -Infinity;
-				this.isDestroy = true;
-				this.#_finish();
+			if (this.nowFrame < 0) {
 				return;
 			}
+			if (this.nowFrame >= this.frameTime) {
+				this.nowFrame = this.frameTime;
+			}
 			const t = this.nowFrame / this.frameTime;
-			let pos = null;
+			let functionType;
+			switch (this.mode) {
+				case "set":
+					functionType = "set";
+					break;
+				case "add":
+				case "addSet":
+					functionType = "add";
+					break;
+			}
 			if (this.position != null) {
-				switch (this.type) {
-					case "smooth":
-						pos = Andesine.Vector2.smoothDamp(this.startPosition, this.position, t);
-						break;
-					case "leap":
-						pos = Andesine.Vector2.leap(this.startPosition, this.position, t);
-						break;
-				}
+				const pos = this.#calcVectorAnim(this.startPosition, this.position, t);
 				switch (this.objType) {
 					case "box":
-						this.animObj.rect.position.set(pos);
+						this.animObj.rect.position[functionType](pos);
 						break;
 				}
-			} else {
-				pos = this.animObj.rect.position.clone();
 			}
 			if (this.size != null) {
-				let size;
-				switch (this.type) {
-					case "smooth":
-						size = Andesine.Vector2.smoothDamp(this.startSize, this.size, t);
-						break;
-					case "leap":
-						size = Andesine.Vector2.leap(this.startSize, this.size, t);
-						break;
-				}
+				const size = this.#calcVectorAnim(this.startSize, this.size, t);
 				switch (this.objType) {
 					case "box":
-						this.animObj.rect.size.set(size);
+						this.animObj.rect.size[functionType](size);
 						break;
 				}
 			}
 			if (this.angle != null) {
-				let angle;
-				switch (this.type) {
-					case "smooth":
-						angle = Jasc.animationSmoothDamp(this.startAngle, this.angle, t);
+				const angle = this.#calcValueAnim(this.startAngle, this.angle, t);
+				switch (this.mode) {
+					case "set":
+						this.animObj.angle = angle;
 						break;
-					case "leap":
-						angle = Jasc.animationLeap(this.startAngle, this.angle, t);
-						break;
+					case "add":
+					case "addSet":
+						this.animObj.angle += angle;
 				}
-				this.animObj.angle = angle;
 			}
 			if (this.alpha != null) {
-				let alpha;
-				switch (this.type) {
-					case "smooth":
-						alpha = Jasc.animationSmoothDamp(this.startAlpha, this.alpha, t);
+				const alpha = this.#calcValueAnim(this.startAlpha, this.alpha, t);
+				switch (this.mode) {
+					case "set":
+						this.animObj.alpha = alpha;
 						break;
-					case "leap":
-						alpha = Jasc.animationLeap(this.startAlpha, this.alpha, t);
+					case "add":
+					case "addSet":
+						this.animObj.alpha += alpha;
 						break;
 				}
-				this.animObj.alpha = alpha;
 			}
-			this.nowFrame++;
-			return pos;
+			this.#oldT = t;
+			if (this.nowFrame >= this.frameTime) {
+				this.isDestroy = true;
+				this.#_finish();
+				return;
+			}
+			this.nowFrame += addFrame;
 		}
 
 		/**
@@ -3434,7 +4620,7 @@ class Andesine {
 
 		/**
 		 * 初めから再開
-		 * @param {function} [callback] - 終了時コールバック(再設定する場合)
+		 * @param {function():undefined} [callback] - 終了時コールバック(再設定する場合)
 		 * @returns {undefined}
 		 */
 		restart(callback) {
@@ -3446,23 +4632,263 @@ class Andesine {
 
 		/**
 		 * 終了時処理
+		 * @returns {undefined}
+		 * @private
 		 */
 		#_finish() {
-			if (this.position != null) {
-				switch (this.objType) {
-					case "box":
-						this.animObj.rect.position.set(this.position);
-						break;
-				}
+			if (this.nowFrame !== this.frameTime) {
+				this.nowFrame = this.frameTime;
+				this.update(0);
 			}
-			if (this.angle != null) {
-				this.animObj.angle = this.angle;
-			}
+			this.nowFrame = -Infinity;
 
 			this.#callback?.();
 			this.#callback = null;
 		}
+
+		/**
+		 * ベクトルアニメーション計算
+		 * @param {InstanceType<typeof Andesine.Vector2>} start - 開始座標
+		 * @param {InstanceType<typeof Andesine.Vector2>} end - 終了座標
+		 * @param {number} t - 進捗率(0~1)
+		 * @param {boolean} [f=true] - 内部計算用
+		 * @returns {InstanceType<typeof Andesine.Vector2>} - 結果座標
+		 * @private
+		 */
+		#calcVectorAnim(start, end, t, f = true) {
+			let pos = null;
+			switch (this.type) {
+				case "smooth":
+					pos = Andesine.Vector2.smoothDamp(start, end, t);
+					break;
+				case "leap":
+					pos = Andesine.Vector2.leap(start, end, t);
+					break;
+			}
+			if (f && this.mode === "add") {
+				pos.sub(this.#calcVectorAnim(start, end, this.#oldT, false));
+			}
+			return pos;
+		}
+
+		/**
+		 * 数値アニメーション計算
+		 * @param {number} start - 開始値
+		 * @param {number} end - 終了値
+		 * @param {number} t - 進捗率(0~1)
+		 * @param {boolean} [f=true] - 内部計算用
+		 * @returns {number} - 結果値
+		 * @private
+		 */
+		#calcValueAnim(start, end, t, f = true) {
+			let val = null;
+			switch (this.type) {
+				case "smooth":
+					val = Jasc.animationSmoothDamp(start, end, t);
+				case "leap":
+					val = Jasc.animationLeap(start, end, t);
+			}
+			if (f && this.mode === "add") {
+				val -= this.#calcValueAnim(start, end, this.#oldT, false);
+			}
+			return val;
+		}
 	};
+
+	// ####################################################################################################
+
+	/**
+	 * マスクの生成
+	 * @param {Object} [opt]
+	 * @param {number[] | InstanceType<typeof Andesine.Vector2>} [opt.position] - マスクの位置(相対)
+	 * @param {number | number[] | string[] | InstanceType<typeof Andesine.Vector2>} [opt.size] - マスクのサイズ
+	 * @param {boolean} [opt.isCircle] - 円形で処理するか(circleモード)
+	 * @param {number} [opt.startAngle=0] - 開始角度
+	 * @param {number} [opt.endAngle=Andesine.TAU] - 終了角度
+	 * @param {boolean} [opt.counterclockwise=false] - false:時計回り true:反時計回り
+	 * @param {function(this,ctx):undefined} [opt.pathFunc] - マスクの境界処理用の代替関数
+	 * @returns {InstanceType<typeof Andesine.Mask>}
+	 */
+	static createMask(opt) {
+		return new Andesine.Mask(opt);
+	}
+
+	/**
+	 * マスク
+	 * @memberof Andesine
+	 * @param {Object} [opt]
+	 * @param {number[] | InstanceType<typeof Andesine.Vector2>} [opt.position] - マスクの位置(相対)
+	 * @param {number | number[] | string[] | InstanceType<typeof Andesine.Vector2>} [opt.size] - マスクのサイズ
+	 * @param {boolean} [opt.isCircle] - 円形で処理するか(circleモード)
+	 * @param {number} [opt.startAngle=0] - 開始角度
+	 * @param {number} [opt.endAngle=Andesine.TAU] - 終了角度
+	 * @param {boolean} [opt.counterclockwise=false] - false:時計回り true:反時計回り
+	 * @param {function(this,CanvasRenderingContext2D,InstanceType<typeof Andesine.Vector2>):undefined} [opt.pathFunc] - マスクの境界処理用の代替関数
+	 * @returns {Andesine.Mask}
+	 */
+	static Mask = class {
+		#_parent = null;
+
+		setting = {};
+
+		constructor({ position = Andesine.Vector2.zero, size = Andesine.Vector2.zero, isCircle = false, startAngle = 0, endAngle = Andesine.TAU, counterclockwise = false, pathFunc = null } = {}) {
+			// マスクの種類
+			let type = "rect";
+			if (isCircle) {
+				type = "circle";
+			} else if (pathFunc !== null) {
+				type = "path";
+			}
+			this.type = type;
+
+			this.setting.size = size;
+			if (this.type === "rect") {
+				this.rect = new Andesine.Rectangle(position, this._updateSize(false));
+			} else if (this.type === "circle") {
+				this.circle = new Andesine.Circle({
+					xy: position,
+					radius: size,
+					startAngle,
+					endAngle,
+					counterclockwise,
+				});
+			} else if (this.type === "path") {
+				this.func = pathFunc;
+			}
+		}
+
+		/**
+		 * マスクをクリップする
+		 * @param {CanvasRenderingContext2D} ctx
+		 * @param {InstanceType<typeof Andesine.Vector2>} pos
+		 * @returns {undefined}
+		 */
+		clip(ctx, pos) {
+			ctx.beginPath();
+			switch (this.type) {
+				case "rect":
+					ctx.rect(pos.x + this.rect.x, pos.y + this.rect.y, this.rect.width, this.rect.height);
+					break;
+				case "circle":
+					const w = this.circle.radiusW;
+					const h = this.circle.radiusH;
+					const x = pos.x + this.circle.position.x + w;
+					const y = pos.y + this.circle.position.y + h;
+					if (this.circle.isEllipse) {
+						ctx.ellipse(x, y, w, h, 0, this.circle.startAngle, this.circle.endAngle, this.circle.counterclockwise);
+					} else {
+						ctx.arc(x, y, w, this.circle.startAngle, this.circle.endAngle, this.circle.counterclockwise);
+					}
+					break;
+				case "path":
+					this.func?.(this, ctx, pos);
+					break;
+			}
+			ctx.clip();
+		}
+
+		/**
+		 * サイズを更新
+		 * @param {boolean} [commit=true]
+		 * @returns {InstanceType<typeof Andesine.Vector2>}
+		 */
+		_updateSize(commit = true) {
+			let size = this.setting.size;
+			if (!size) {
+				return this.rect.size.clone();
+			}
+			if (size instanceof Andesine.Vector2) {
+				if (commit) {
+					switch (this.type) {
+						case "rect":
+							this.rect.width = size.x;
+							this.rect.height = size.y;
+							break;
+						case "circle":
+							this.circle.radius = size;
+							break;
+					}
+				}
+				this.setting.size = null;
+				return size;
+			}
+			let w, h;
+			if (Jasc.isAssociative(size)) {
+				w = size.x ?? size.width ?? size.w ?? 0;
+				h = size.y ?? size.height ?? size.h ?? 0;
+			} else if (Array.isArray(size)) {
+				w = size[0];
+				h = size[1];
+			} else if (typeof size === "string") {
+				size = size.toLowerCase();
+				if (size === "max" || size === "full") {
+					w = "max";
+					h = "max";
+					this.setting.size = "max";
+				}
+			} else {
+				return;
+			}
+			const ws = w.toString().toLowerCase();
+			const v = new Andesine.Vector2();
+			const pos = this.parent?.rect?.size ?? Andesine.Vector2.MAX_VECTOR;
+			let ch = false;
+			if (ws === "max" || ws === "full") {
+				v.x = pos.x;
+				ch = true;
+			} else {
+				v.x = +w;
+			}
+			const hs = h.toString().toLowerCase();
+			if (hs === "max" || hs === "full") {
+				v.y = pos.y;
+				ch = true;
+			} else {
+				v.y = +h;
+			}
+			if (!ch) {
+				this.setting.size = null;
+			}
+			if (commit) {
+				switch (this.type) {
+					case "rect":
+						this.rect.width = v.x;
+						this.rect.height = v.y;
+						break;
+					case "circle":
+						this.circle.radius = v;
+						break;
+				}
+			}
+			return v;
+		}
+
+		/**
+		 * 親オブジェクト取得
+		 * @returns {InstanceType<typeof Andesine.DrawObject> | null}
+		 * @readonly
+		 */
+		get parent() {
+			return this.#_parent;
+		}
+
+		/**
+		 * 親オブジェクト追加(システム用)
+		 * @param {InstanceType<typeof Andesine.DrawObject> | null} parent
+		 * @returns {undefined}
+		 */
+		_setParent(parent) {
+			if (parent instanceof Andesine.DrawObject) {
+				this.#_parent = parent;
+				this._updateSize();
+			} else if (parent === null) {
+				this.#_parent = null;
+			} else {
+				console.warn("親オブジェクト指定エラー");
+			}
+		}
+	};
+
 	// ####################################################################################################
 
 	/**
@@ -3608,6 +5034,45 @@ class Andesine {
 		}
 	};
 
+	// ==================================================
+
+	/**
+	 * ゲームリセットイベント
+	 * @memberof Andesine
+	 * @param  {InstanceType<typeof Andesine.DrawObject>} _this - 対象オブジェクト
+	 * @returns {Andesine.GameResettingEvent}
+	 */
+	static GameResettingEvent = class extends Andesine.GameEvent {
+		// 継承するだけ
+	};
+
+	/**
+	 * ゲーム更新イベント
+	 * @memberof Andesine
+	 * @param  {InstanceType<typeof Andesine.DrawObject>} _this - 対象オブジェクト
+	 * @returns {Andesine.GameUpdateEvent}
+	 */
+	static GameUpdateEvent = class extends Andesine.GameEvent {
+		// 継承するだけ
+	};
+
+	/**
+	 * ゲーム描画イベント
+	 * @memberof Andesine
+	 * @param  {InstanceType<typeof Andesine.DrawObject>} _this - 対象オブジェクト
+	 * @returns {Andesine.GameDrawEvent}
+	 */
+	static GameDrawEvent = class extends Andesine.GameEvent {
+		// 継承するだけ
+	};
+
+	/**
+	 *
+	 */
+	static GameChangeEvent = class extends Andesine.GameEvent {
+		// 継承するだけ
+	};
+
 	// ####################################################################################################
 
 	/**
@@ -3619,6 +5084,10 @@ class Andesine {
 		#_manager;
 		#children = {};
 		#layerList = [];
+
+		#_cache_size;
+
+		static OVER_SIZE_PX = 10;
 
 		constructor(canvas) {
 			this.canvas = canvas;
@@ -3695,6 +5164,7 @@ class Andesine {
 		 * @returns {undefined}
 		 */
 		resetting() {
+			this.#_cache_size = null;
 			for (let i = 0, li = this.#layerList.length; i < li; i++) {
 				this.#children[this.#layerList[i]]._systemResetting();
 			}
@@ -3705,9 +5175,11 @@ class Andesine {
 		 * @returns {undefined}
 		 */
 		_update() {
+			let count = 0;
 			for (let i = 0, li = this.#layerList.length; i < li; i++) {
-				this.#children[this.#layerList[i]]._systemUpdate();
+				count += this.#children[this.#layerList[i]]._systemUpdate();
 			}
+			return count;
 		}
 
 		/**
@@ -3716,9 +5188,11 @@ class Andesine {
 		 * @returns {undefined}
 		 */
 		_draw(isDraw) {
+			let count = 0;
 			for (let i = 0, li = this.#layerList.length; i < li; i++) {
-				this.#children[this.#layerList[i]]._systemDraw(isDraw);
+				count += this.#children[this.#layerList[i]]._systemDraw(isDraw);
 			}
+			return count;
 		}
 
 		_hover(es) {
@@ -3734,10 +5208,25 @@ class Andesine {
 		}
 
 		/**
+		 * キャンバスサイズ
+		 * @returns {InstanceType<typeof Andesine.Rectangle>}
+		 * @readonly
+		 */
+		get size() {
+			if (this.#_cache_size) {
+				return this.#_cache_size.clone();
+			}
+			const size = jasc.game.getCanvasSize(this.canvas);
+			const rect = new Andesine.Rectangle([0, 0], [size.width, size.height]);
+			this.#_cache_size = rect.clone();
+			return rect;
+		}
+
+		/**
 		 * 描画オブジェクトを追加
 		 * @param {InstanceType<typeof Andesine.DrawObject>} child
 		 * @param {string} [name=""]
-		 * @returns {boolean}
+		 * @returns {string} 設定されたオブジェクト名
 		 */
 		appendChild(child, name = "") {
 			if (!(child instanceof Andesine.DrawObject)) {
@@ -3750,6 +5239,7 @@ class Andesine {
 				name = Jasc.setAssociativeAutoName(this.#children, child, "andesine");
 			}
 			child.manager = this.#_manager;
+			child.canvasObject = this;
 			this._updateLayerList();
 			return name;
 		}
@@ -3822,23 +5312,51 @@ class Andesine {
 
 	/**
 	 * ゲームマネージャーを作成
+	 * @param {object} [opt] - オプション
+	 * @param {boolean} [opt.debug] - デバッグログを使用するか
+	 * @param {boolean} [opt.useGC] - 独自GCを使用するか
 	 * @returns {InstanceType<typeof Andesine.GameManager>}
 	 * @static
 	 */
-	static createGameManager() {
-		return new Andesine.GameManager();
+	static createGameManager({ debug = false, useGC = true } = {}) {
+		return new Andesine.GameManager({ debug, useGC });
 	}
 	/**
 	 * ゲームマネージャー
 	 * @memberof Andesine
+	 * @param {object} [opt] - オプション
+	 * @param {boolean} [opt.debug] - デバッグログを使用するか
+	 * @param {boolean} [opt.useGC] - 独自GCを使用するか
 	 * @returns {Andesine.GameManager}
 	 */
 	static GameManager = class {
 		#canvasDict = {};
 		#assetManager;
+		#logger;
 
-		constructor() {
-			this.#assetManager = jasc.assetsManager();
+		drawObjCount = 0;
+		objCount = 0;
+
+		constructor({ debug = false, useGC = true } = {}) {
+			this.#assetManager = new Jasc.AssetsManager();
+			this.#logger = new Jasc.ConsoleCustomLog({
+				prefix: "andesine",
+				debug: debug,
+			});
+
+			const _this = this;
+			if (useGC) {
+				const game = jasc.readonly.game;
+				jasc.on("gameSecondUpdate", (gameData) => {
+					// 軽量化処理(gc)
+					if (gameData.isOverFrame || gameData.nowFps < game.maxFps >> 2) {
+						const rCou = _this.releaseResources();
+						if (rCou > 0) {
+							_this.#logger.log(`[GC]release: ${rCou}`, "data");
+						}
+					}
+				});
+			}
 		}
 
 		/**
@@ -3880,9 +5398,11 @@ class Andesine {
 		 * @returns {undefined}
 		 */
 		update() {
+			let count = 0;
 			for (const name in this.#canvasDict) {
-				this.#canvasDict[name]._update();
+				count += this.#canvasDict[name]._update();
 			}
+			this.objCount = count;
 		}
 
 		/**
@@ -3891,9 +5411,14 @@ class Andesine {
 		 * @returns {undefined}
 		 */
 		draw(isDraw) {
-			for (const name in this.#canvasDict) {
-				this.#canvasDict[name]._draw(isDraw);
+			if (!isDraw) {
+				return;
 			}
+			let count = 0;
+			for (const name in this.#canvasDict) {
+				count += this.#canvasDict[name]._draw(isDraw);
+			}
+			this.drawObjCount = count;
 		}
 
 		/**
@@ -4058,6 +5583,15 @@ class Andesine {
 		 */
 		get asset() {
 			return this.#assetManager;
+		}
+
+		/**
+		 * ログ管理
+		 * @returns {InstanceType<typeof Jasc.ConsoleCustomLog>}
+		 * @readonly
+		 */
+		get logger() {
+			return this.#logger;
 		}
 	};
 
