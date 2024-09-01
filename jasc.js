@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.7
+// jasc.js Ver.1.14.8
 
 /*
 ! ！！注意！！
@@ -122,6 +122,8 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 *- 連想配列計算
 * Jasc.isAssociative(obj)												//連想配列判定
 - jasc.isAssociative(obj)
+* Jasc.deepCopy(obj, opt = {})											//ディープコピー
+- jasc.deepCopy(obj, opt = {})
 * Jasc.overwriteAssociative(parents, child = {})						//連想配列を結合(上書き)[破壊的関数]
 - jasc.overwriteAssociative(parents, child = {})
 * Jasc.setAssociativeAutoName(obj = {}, data = null, baseName = "", prefix = "-")		//連想配列自動名前付け
@@ -277,6 +279,7 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 * gitrine					//localStorageの保存時に圧縮
 * zircon					//暗号化
 * beryl						//圧縮
+* lazyList					//遅延リスト
 *- 他作 - kunzite
 * katex-auto				//katex-jsの自動処理用(kunziteでは未使用)
 * katex-js					//KaTeXをhtmlで表示する
@@ -600,6 +603,12 @@ class Jasc {
 			lnk: "beryl.js",
 			alternative: "https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jascLib/beryl.min.js",
 			relations: ["base64urlEncoder", "cheep-compressor", "deflate", "inflate", "lzbase62", "lz-string", "url-comp", "URLpercentEncoder"],
+		},
+		lazyList: {
+			isLoad: false,
+			lnk: "lazyList.js",
+			alternative: "https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jascLib/lazyList.min.js",
+			relations: [],
 		},
 		// 他作 - kunzite
 		"katex-auto": {
@@ -927,7 +936,9 @@ class Jasc {
 		window.addEventListener("resize", function (e) {
 			_this._dispatchEvent("windowResize", e);
 
-			_this.game.canvasResize();
+			if (_this.#jasc_settingData.isCanvasAutoResize) {
+				_this.game.canvasResize();
+			}
 		});
 		//* ウィンドウフォーカス
 		window.addEventListener("focus", function () {
@@ -1044,7 +1055,7 @@ class Jasc {
 
 		//* ライブラリ自動インポート
 		for (let key in this.#jascLibTree) {
-			if (this.#jasc_initSettingData.useLib?.[key] && !this.#jascLibTree[key].isLoad) {
+			if (this.#jasc_initSettingData.useLib[key] && !this.#jascLibTree[key].isLoad) {
 				await this.#_jascLibLoad(key);
 			}
 		}
@@ -1099,7 +1110,7 @@ class Jasc {
 		if (this.#jasc_initSettingData.isGame) {
 			this.#_gameInit();
 		}
-		if (this.#isFlags.resizeSkip) {
+		if (this.#jasc_settingData.isCanvasAutoResize && this.#isFlags.resizeSkip) {
 			this.game.canvasResize();
 		}
 		// 画像err取得
@@ -1220,9 +1231,9 @@ class Jasc {
 
 		//* jasc共有グローバル変数
 		if (this.#jasc_readonlyData.isIframe) {
-			let gl = this.#jasc_readonlyData.topJasc?.constructor?.global?._getDictionary?.();
+			let gl = this.#jasc_readonlyData.topJasc?.constructor?.global._getDictionary?.();
 			if (!gl) {
-				gl = this.#jasc_readonlyData.parentJasc?.constructor?.global?._getDictionary?.();
+				gl = this.#jasc_readonlyData.parentJasc?.constructor?.global._getDictionary?.();
 			}
 			if (gl) {
 				Jasc.#_global = gl;
@@ -1343,7 +1354,7 @@ class Jasc {
 					break;
 			}
 			if (os == "") {
-				os = navigator?.platform;
+				os = navigator.platform;
 				if (!os) {
 					os = "";
 				}
@@ -1376,8 +1387,8 @@ class Jasc {
 						} else if (Jasc.isAssociative(obj)) {
 							const c = document.createElement("canvas");
 							c.id = obj.id ?? key;
-							c.width = obj?.width ?? 100;
-							c.height = obj?.height ?? 100;
+							c.width = obj.width ?? 100;
+							c.height = obj.height ?? 100;
 							obj.parent ??= document.body;
 							obj.parent.appendChild(c);
 							obj = c;
@@ -1808,12 +1819,12 @@ class Jasc {
 			elem.classList.add("jascExLinkGetter");
 			if (this.isExternalLink(elem)) {
 				// 別ウィンドウに飛ばす
-				if (!elem?.target || elem.target != "_self") {
+				if (!elem.target || elem.target != "_self") {
 					elem.target = "_blank";
 				}
 				// セキュリティ対策
 				if (elem.target == "_blank") {
-					if (!elem?.rel) {
+					if (!elem.rel) {
 						elem.rel = "noopener noreferrer";
 					}
 				}
@@ -2020,9 +2031,9 @@ class Jasc {
 			return list;
 		}
 		if (Jasc.objHasOwnProperty(this.#jasc_events, eventType)[0]) {
-			if (Jasc.isAssociative(this.#jasc_events?.[eventType])) {
+			if (Jasc.isAssociative(this.#jasc_events[eventType])) {
 				if (name != "") {
-					if (typeof this.#jasc_events[eventType]?.[name] !== "function") {
+					if (typeof this.#jasc_events[eventType][name] !== "function") {
 						return 2;
 					}
 					this.#jasc_events[eventType][name] = null;
@@ -2057,9 +2068,9 @@ class Jasc {
 		if (eventType === "runNow") {
 			return -1;
 		}
-		if (!Jasc.isAssociative(this.#jasc_events?.[eventType])) {
+		if (!Jasc.isAssociative(this.#jasc_events[eventType])) {
 			eventType = "_" + eventType;
-			if (!Jasc.isAssociative(this.#jasc_events?.[eventType])) {
+			if (!Jasc.isAssociative(this.#jasc_events[eventType])) {
 				return -1;
 			}
 		}
@@ -2068,7 +2079,7 @@ class Jasc {
 		for (let key in e) {
 			if (typeof e[key] == "function") {
 				try {
-					e[key]?.(...args);
+					e[key](...args);
 					c++;
 				} catch (e) {
 					this._ccLog.error(e, true);
@@ -2785,7 +2796,7 @@ class Jasc {
 			return list;
 		}
 		if (Jasc.objHasOwnProperty(this.#jasc_exEvents, eventType)[0]) {
-			if (Jasc.isAssociative(this.#jasc_exEvents?.[eventType])) {
+			if (Jasc.isAssociative(this.#jasc_exEvents[eventType])) {
 				if (name != "") {
 					if (!Jasc.isAssociative(typeof this.#jasc_exEvents[eventType]?.[name])) {
 						return 2;
@@ -2793,7 +2804,7 @@ class Jasc {
 					const data = this.#jasc_exEvents[eventType][name];
 					this._exEventIO(data.elem, eventType, name);
 				} else {
-					for (const key in this.#jasc_exEvents?.[eventType]) {
+					for (const key in this.#jasc_exEvents[eventType]) {
 						const data = this.#jasc_exEvents[eventType][key];
 						this._exEventIO(data.elem, eventType, key);
 					}
@@ -2964,23 +2975,23 @@ class Jasc {
 			return;
 		}
 		// bool
-		let async = opt?.async ?? true;
+		let async = opt.async ?? true;
 		// string
-		let charset = opt?.charset ?? "UTF-8";
-		let contentType = opt?.contentType ?? null;
-		let dataType = opt?.dataType ?? "text";
-		let password = opt?.password;
-		let type = opt?.type ?? "GET";
-		let url = opt?.url;
-		let username = opt?.username;
+		let charset = opt.charset ?? "UTF-8";
+		let contentType = opt.contentType ?? null;
+		let dataType = opt.dataType ?? "text";
+		let password = opt.password;
+		let type = opt.type ?? "GET";
+		let url = opt.url;
+		let username = opt.username;
 		// object or string
-		let data = opt?.data ?? {};
+		let data = opt.data ?? {};
 		// number
-		let timeout = opt?.timeout ?? 0;
+		let timeout = opt.timeout ?? 0;
 		// Event
-		let complete = opt?.complete ?? function () {};
-		let error = opt?.error ?? function () {};
-		let success = opt?.success ?? function () {};
+		let complete = opt.complete ?? function () {};
+		let error = opt.error ?? function () {};
+		let success = opt.success ?? function () {};
 
 		if (!url) {
 			return;
@@ -3165,9 +3176,9 @@ class Jasc {
 	 * @returns {Promise<undefined>} 完了後実行
 	 */
 	autoUrlShare(json) {
-		let title = json?.title ?? document.title;
-		let text = json?.text ?? "";
-		let url = json?.url ?? "";
+		let title = json.title ?? document.title;
+		let text = json.text ?? "";
+		let url = json.url ?? "";
 		if (text == "" && url != "") {
 			text = title;
 		} else if (url == "" && text != "") {
@@ -3344,8 +3355,6 @@ class Jasc {
 		 * @param {string} [options.fontVariantCaps="normal"] - 文字大文字
 		 * @param {number} [options.globalAlpha=1] - アルファ
 		 * @param {string} [options.globalCompositeOperation="source-over"] - アルファ合成
-		 * @param {boolean} [options.imageSmoothingEnabled=true] - 画像のスムーシング
-		 * @param {string} [options.imageSmoothingQuality="low"] - 画像のスムーシング
 		 * @param {string} [options.letterSpacing="0px"] - 文字間隔
 		 * @param {string} [options.lineCap="butt"] - 線の端
 		 * @param {number} [options.lineDashOffset=0] - 線の間隔
@@ -3376,8 +3385,6 @@ class Jasc {
 				fontVariantCaps = "normal", // 文字大文字
 				globalAlpha = 1, // アルファ
 				globalCompositeOperation = "source-over", // アルファ合成
-				imageSmoothingEnabled = true, // 画像のスムーシング
-				imageSmoothingQuality = "low", // 画像のスムーシング
 				letterSpacing = "0px", // 文字間隔
 				lineCap = "butt", // 線の端
 				lineDashOffset = 0, // 線の間隔
@@ -3391,7 +3398,6 @@ class Jasc {
 				strokeStyle = "#000", // 線のスタイル
 				textAlign = "left", // 文字の配置(startではない)
 				textBaseline = "top", // 文字の配置(alphabeticではない)
-				textRendering = "auto", // 文字の配置
 				wordSpacing = "0px", // 単語間隔
 			}
 		) {
@@ -3407,8 +3413,6 @@ class Jasc {
 			ctx.fontVariantCaps = fontVariantCaps;
 			ctx.globalAlpha = globalAlpha;
 			ctx.globalCompositeOperation = globalCompositeOperation;
-			ctx.imageSmoothingEnabled = imageSmoothingEnabled;
-			ctx.imageSmoothingQuality = imageSmoothingQuality;
 			ctx.letterSpacing = letterSpacing;
 			ctx.lineCap = lineCap;
 			ctx.lineDashOffset = lineDashOffset;
@@ -3422,7 +3426,6 @@ class Jasc {
 			ctx.strokeStyle = strokeStyle;
 			ctx.textAlign = textAlign;
 			ctx.textBaseline = textBaseline;
-			ctx.textRendering = textRendering;
 			ctx.wordSpacing = wordSpacing;
 		}.bind(this),
 
@@ -3435,7 +3438,30 @@ class Jasc {
 			if (ctx == null) {
 				ctx = this.#_activeCtx;
 			}
-			ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+			const size = jasc.game.getCanvasSize(ctx.canvas);
+			ctx.clearRect(0, 0, size.width, size.height);
+		}.bind(this),
+
+		/**
+		 * キャンバスの変換行列を取得
+		 * @param {CanvasRenderingContext2D} [ctx] - キャンバス
+		 * @returns {Object<string, number | boolean>} 変換行列
+		 */
+		getTransform: function (ctx) {
+			if (ctx == null) {
+				ctx = this.#_activeCtx;
+			}
+			const t = ctx.getTransform();
+			return {
+				scaleX: t.a,
+				skewY: t.b,
+				skewX: t.c,
+				scaleY: t.d,
+				translateX: t.e,
+				translateY: t.f,
+				is2D: t.is2D,
+				isIdentity: t.isIdentity,
+			};
 		}.bind(this),
 	};
 
@@ -3508,9 +3534,10 @@ class Jasc {
 		 * canvasリサイズ
 		 * @param {number} [width=0] 横幅
 		 * @param {number} [height=0] 高さ
+		 * @param {number} [scale=1] キャンバスサイズ
 		 * @returns {undefined}
 		 */
-		canvasResize: function (width = 0, height = 0) {
+		canvasResize: function (width = 0, height = 0, scale = 1) {
 			if (!this.#isFlags.gameInit) {
 				this.#isFlags.resizeSkip = true;
 				return;
@@ -3529,10 +3556,12 @@ class Jasc {
 			}
 			for (let key in _jasc_gameData.canvas) {
 				const canvas = _jasc_gameData.canvas[key];
-				canvas.width = width * dpr;
-				canvas.height = height * dpr;
+				const ctx = _jasc_gameData.ctx[key];
 
-				_jasc_gameData.ctx[key].scale(dpr, dpr);
+				canvas.width = width * dpr * scale;
+				canvas.height = height * dpr * scale;
+
+				ctx.scale(dpr, dpr);
 
 				canvas.style.width = width + "px";
 				canvas.style.height = height + "px";
@@ -3554,20 +3583,11 @@ class Jasc {
 					return false;
 				}
 			}
-			if (this.#jasc_settingData.isCanvasAutoResize) {
-				for (let key in this.#jasc_gameData.canvas) {
-					if (this.#jasc_gameData.canvas[key] == canvas) {
-						const dpr = window.devicePixelRatio || 1;
-						return {
-							width: canvas.width / dpr,
-							height: canvas.height / dpr,
-						};
-					}
-				}
-			}
+
+			const t = jasc.draw.getTransform(canvas.getContext("2d"));
 			return {
-				width: canvas.width,
-				height: canvas.height,
+				width: canvas.width / t.scaleX,
+				height: canvas.height / t.scaleY,
 			};
 		}.bind(this),
 	};
@@ -3591,6 +3611,249 @@ class Jasc {
 	 * @returns {boolean}
 	 */
 	isAssociative = Jasc.isAssociative;
+
+	/**
+	 * オブジェクトをディープコピーする
+	 *
+	 * ※ 以下の全て参照渡し(他非対応オブジェクトなどは全て参照渡し)
+	 * Function, Promise, Class(一部除く), WeakMap, WeakSet
+	 * @param {object} obj - オブジェクト
+	 * @param {Object | boolean} [opt] - オプション(内容はtrueで値渡し(or コピー)、falseで参照渡し)
+	 * @param {boolean} [opt.copyArray=true] - 配列をコピー
+	 * @param {boolean} [opt.copyAssociative=true] - 連想配列をコピー
+	 * @param {boolean} [opt.copyDOM=false] - DOM要素をコピー
+	 * @param {boolean} [opt.copyDate=true] - Dateをコピー
+	 * @param {boolean} [opt.copyArrayBuffer=true] - ArrayBufferをコピー
+	 * @param {boolean} [opt.copyDataView=true] - DataViewをコピー
+	 * @param {boolean} [opt.copyMap=false] - Mapをコピー
+	 * @param {boolean} [opt.copySet=false] - Setをコピー
+	 * @param {boolean} [opt.copyRegExp=false] - RegExpをコピー
+	 * @param {boolean} [opt.copySymbol=false] - Symbolをコピー
+	 * @param {boolean} [opt.copyError=false] - Errorをコピー
+	 * @param {boolean} [opt.cloneClass=false] - clone関数が存在するClassをコピー
+	 * @returns {object} コピーされたオブジェクト
+	 * @static
+	 */
+	static deepCopy(obj, opt = {}) {
+		if (obj === null || typeof obj !== "object") {
+			// プリミティブ型またはnull/undefinedの場合、そのまま
+			return obj;
+		}
+
+		if (!Jasc.isAssociative(opt)) {
+			if (typeof opt === "boolean") {
+				opt = {
+					copyArray: opt,
+					copyAssociative: opt,
+					copyDOM: opt,
+					copyDate: opt,
+					copyArrayBuffer: opt,
+					copyDataView: opt,
+					copyMap: opt,
+					copySet: opt,
+					copyRegExp: opt,
+					copySymbol: opt,
+					copyError: opt,
+					cloneClass: opt,
+				};
+			} else {
+				throw new Error("opt must be boolean or object");
+			}
+		}
+		const {
+			// オプション
+			copyArray = true,
+			copyAssociative = true,
+			copyDOM = false,
+			copyDate = true,
+			copyArrayBuffer = true,
+			copyDataView = true,
+			copyMap = false,
+			copySet = false,
+			copyRegExp = false,
+			copySymbol = false,
+			copyError = false,
+			cloneClass = false,
+		} = opt;
+
+		const seen = new WeakMap();
+		const stack = [{ parent: null, key: undefined, value: obj }];
+		let root;
+
+		while (stack.length > 0) {
+			// スタックから現在の処理対象を取り出す
+			const { parent, key, value } = stack.pop();
+
+			let res;
+
+			let retType = true;
+			if (seen.has(value)) {
+				// 循環参照をチェックし、既に処理済みのオブジェクトがあればそれをセット
+				res = seen.get(value);
+				retType = false;
+			} else if (value === null || typeof value !== "object") {
+				// プリミティブ型またはnull/undefinedの場合、そのまま
+				res = value;
+				retType = false;
+			} else if (Array.isArray(value)) {
+				// 配列
+				if (copyArray) {
+					res = [];
+
+					retType = "array";
+				} else {
+					res = value;
+					retType = false;
+				}
+			} else if (Jasc.isAssociative(value)) {
+				// 連想配列
+				if (copyAssociative) {
+					res = {};
+					retType = "associative";
+				} else {
+					res = value;
+					retType = false;
+				}
+			} else if (value instanceof Date) {
+				// Dateオブジェクト
+				res = copyDate ? new Date(value) : value;
+			} else if (value instanceof HTMLElement) {
+				// HTML要素のコピー方法を選択
+				res = copyDOM ? value.cloneNode(true) : value;
+			} else if (value instanceof RegExp) {
+				// RegExpオブジェクトのコピー方法を選択
+				res = copyRegExp ? new RegExp(value.source, value.flags) : value;
+			} else if (value instanceof Map) {
+				// Mapのコピー方法を選択
+				if (copyMap) {
+					res = new Map();
+					retType = "map";
+				} else {
+					res = value;
+					retType = false;
+				}
+			} else if (value instanceof Set) {
+				// Setのコピー方法を選択
+				if (copySet) {
+					res = new Set();
+					retType = "set";
+				} else {
+					res = value;
+					retType = false;
+				}
+			} else if (value instanceof Error) {
+				// Errorオブジェクトのコピー方法を選択
+				res = copyError ? new value.constructor(value.message) : value;
+			} else if (value instanceof ArrayBuffer) {
+				// ArrayBufferのコピー
+				res = copyArrayBuffer ? value.slice(0) : value;
+			} else if (value instanceof DataView) {
+				// DataViewのコピー
+				if (copyDataView) {
+					res = new DataView(new ArrayBuffer(value.byteLength));
+					new Uint8Array(res.buffer).set(new Uint8Array(value.buffer));
+				} else {
+					res = value;
+				}
+			} else if (value instanceof Symbol) {
+				// Symbolのコピー方法を選択
+				res = copySymbol ? Symbol(value.description) : value;
+			} else if (value.constructor && value.constructor !== Object) {
+				// クラスインスタンスの場合はそのまま参照をセット
+				if (cloneClass && value.clone) {
+					res = value.clone();
+				} else {
+					res = value;
+				}
+			} else {
+				// その他
+				res = value;
+			}
+
+			if (retType) {
+				seen.set(value, res);
+				let list;
+				switch (retType) {
+					case "array":
+						// 配列の要素をスタックに追加
+						for (let i = value.length - 1; i >= 0; i--) {
+							stack.push({ parent: res, key: i, value: value[i] });
+						}
+						break;
+					case "associative":
+						// オブジェクトのプロパティをスタックに追加
+						list = Object.getOwnPropertyNames(value);
+						for (let i = list.length - 1; i >= 0; i--) {
+							const key = list[i];
+							if (value.hasOwnProperty(key)) {
+								stack.push({ parent: res, key, value: value[key] });
+							}
+						}
+						break;
+					case "map":
+						// Mapの要素をスタックに追加
+						list = Array.from(value.keys());
+						for (let i = list.length - 1; i >= 0; i--) {
+							const key = list[i];
+							stack.push({ parent: res, key, value: value.get(key) });
+						}
+						break;
+					case "set":
+						// Setの要素をスタックに追加
+						list = Array.from(value);
+						for (let i = list.length - 1; i >= 0; i--) {
+							stack.push({ parent: res, key: i, value: list[i] });
+						}
+						break;
+				}
+			}
+
+			if (parent) {
+				// コピー先のオブジェクトに値をセット
+				switch (retType) {
+					case "array":
+					case "associative":
+						parent[key] = res;
+						break;
+					case "map":
+						parent.set(key, res);
+						break;
+					case "set":
+						parent.add(res);
+						break;
+					default:
+						parent[key] = res;
+				}
+			} else {
+				// ルートオブジェクトの場合
+				root = res;
+			}
+		}
+
+		return root;
+	}
+	/**
+	 * オブジェクトをディープコピーする
+	 *
+	 * ※ 以下の全て参照渡し(他非対応オブジェクトなどは全て参照渡し)
+	 * Function, Promise, Class(一部除く), WeakMap, WeakSet
+	 * @param {object} obj - オブジェクト
+	 * @param {object} [opt] - オプション(内容はtrueで値渡し(or コピー)、falseで参照渡し)
+	 * @param {boolean} [opt.copyArray=true] - 配列をコピー
+	 * @param {boolean} [opt.copyAssociative=true] - 連想配列をコピー
+	 * @param {boolean} [opt.copyDOM=false] - DOM要素をコピー
+	 * @param {boolean} [opt.copyDate=true] - Dateをコピー
+	 * @param {boolean} [opt.copyArrayBuffer=true] - ArrayBufferをコピー
+	 * @param {boolean} [opt.copyDataView=true] - DataViewをコピー
+	 * @param {boolean} [opt.copyMap=false] - Mapをコピー
+	 * @param {boolean} [opt.copySet=false] - Setをコピー
+	 * @param {boolean} [opt.copyRegExp=false] - RegExpをコピー
+	 * @param {boolean} [opt.copySymbol=false] - Symbolをコピー
+	 * @param {boolean} [opt.copyError=false] - Errorをコピー
+	 * @param {boolean} [opt.cloneClass=false] - clone関数が存在するClassをコピー
+	 * @returns {object} コピーされたオブジェクト
+	 */
+	deepCopy = Jasc.deepCopy;
 
 	/**
 	 * 連想配列を結合(上書き)[破壊的関数]
@@ -4647,7 +4910,7 @@ class Jasc {
 	 */
 	static getMimeType(ext) {
 		ext = ext.toString().toLowerCase();
-		let lst = Jasc.#_FILETYPE_MIME_LIST?.[ext] ?? "application/octet-stream";
+		let lst = Jasc.#_FILETYPE_MIME_LIST[ext] ?? "application/octet-stream";
 		if (!Array.isArray(lst)) {
 			return [lst];
 		}
@@ -4827,7 +5090,7 @@ class Jasc {
 	 */
 	static setCookie(name, value, opt = {}) {
 		let date = new Date();
-		date.setTime(date.getTime() + (opt?.days ?? 3) * 24 * 60 * 60 * 1000);
+		date.setTime(date.getTime() + (opt.days ?? 3) * 24 * 60 * 60 * 1000);
 		document.cookie = name + "=" + value + "; expires=" + date.toUTCString() + "; path=/";
 	}
 	/**
@@ -4887,19 +5150,19 @@ class Jasc {
 	 */
 	objDefineProperty(obj, name, opt = {}) {
 		let da = {
-			configurable: opt?.configurable ?? false,
-			enumerable: opt?.enumerable ?? true,
+			configurable: opt.configurable ?? false,
+			enumerable: opt.enumerable ?? true,
 		};
-		if (opt?.get || opt?.set) {
-			if (opt?.get) {
-				da.get = opt?.get;
+		if (opt.get || opt.set) {
+			if (opt.get) {
+				da.get = opt.get;
 			}
-			if (opt?.set) {
-				da.set = opt?.set;
+			if (opt.set) {
+				da.set = opt.set;
 			}
 		} else {
-			da.value = opt?.value;
-			da.writable = opt?.writable ?? false;
+			da.value = opt.value;
+			da.writable = opt.writable ?? false;
 		}
 		try {
 			Object.defineProperty(obj, name, da);
@@ -5060,7 +5323,7 @@ class Jasc {
 		if (!dom) {
 			return 1;
 		}
-		if (dom?.[0]) {
+		if (dom[0]) {
 			dom = dom[0];
 		}
 		dom.dispatchEvent(kEvent);
@@ -5213,7 +5476,7 @@ class Jasc {
 			}
 			let logStyle = "";
 			if (typeof type == "string") {
-				if (this.style?.[type]) {
+				if (this.style[type]) {
 					logStyle = this.style[type];
 				} else {
 					logStyle = type;
@@ -5402,7 +5665,7 @@ class Jasc {
 }
 
 // 初期化
-if (typeof window?.jasc == "undefined") {
+if (typeof window.jasc == "undefined") {
 	var jasc = new Jasc();
 } else {
 	console.warn("[jasc]変数「jasc」は既に使用されています！");
