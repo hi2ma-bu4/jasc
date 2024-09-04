@@ -29,9 +29,11 @@
 * kunzite
   * md -> html
 * andesine
-  * ゲーム
+  * 2D描画
+* lazyList
+  * 遅延リスト
 
-### 以下のファイルは著作権に注意
+### 以下のファイルは権利に注意
 * `jascLib/berylLib/cheep-compressor.min.js`
   * https://github.com/utubo/js-cheep-compressor
 * `jascLib/berylLib/deflate.min.js`

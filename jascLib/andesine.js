@@ -106,7 +106,7 @@ class Andesine {
 	 * @type {number}
 	 * @default 30
 	 */
-	static MAX_SKIP_FRAME = 30;
+	static MAX_SKIP_FRAME = 5;
 
 	/**
 	 * デバッグモード
@@ -3078,16 +3078,17 @@ class Andesine {
 
 		/**
 		 * 全体オブジェクト更新ループ
+		 * @param {Object.<string, Array<any> | number>} es - イベントオブジェクト
+		 * @param {Object.<string, Array<number>>} deeps - イベント深度
 		 * @param {number} skipCou - スキップ数
-		 * @param {boolean} gcf - ゲーム内時間(フレーム)
 		 * @param {boolean} [isParentChange] - 親変更フラグ
 		 * @returns {number}
 		 */
-		_systemUpdate(skipCou, gcf, isParentChange) {
+		_systemUpdate(es, deeps, skipCou, isParentChange) {
 			let count = 0;
 			this._cache_isInCanvas = null;
 
-			const skipFrameCou = Andesine.Util.calcDoFrame(this, skipCou, gcf);
+			const skipFrameCou = Andesine.Util.calcDoFrame(this, skipCou, es.gcf);
 			if (skipFrameCou === 0) {
 				return count;
 			}
@@ -3099,12 +3100,20 @@ class Andesine {
 					return count;
 				}
 			}
+			const nd = {};
+			if (this.isInside) {
+				this._updateDeepEvent(es, deeps, nd, Andesine.GameTouchStartEvent, "touchStart");
+				this._updateDeepEvent(es, deeps, nd, Andesine.GameHoverEvent, "hover", "hoverMove");
+				this._updateDeepEvent(es, deeps, nd, Andesine.GameClickEvent, "click");
+			}
 			this.update(skipFrameCou);
 			count++;
-			const list = this.#_layerList;
+			if (this.isInnerUpdate === false) {
+				return count;
+			}
 			for (const name of this.#_layerList) {
 				const child = this.#_children[name];
-				count += child._systemUpdate(skipFrameCou, gcf, _isParCheck);
+				count += child._systemUpdate(es, nd, skipFrameCou, _isParCheck);
 				if (this.isDestroy || child.isDestroy) {
 					this.removeChild(name);
 				}
@@ -3113,9 +3122,46 @@ class Andesine {
 		}
 
 		/**
+		 * deepリストの更新
+		 * @param {Object.<string, Array<any> | number>} es - イベントオブジェクト
+		 * @param {Object.<string, Array<number>>} deeps - イベント深度
+		 * @param {Object.<string, Array<number>>} nd - 更新後の深度
+		 * @param {Andesine.GameEvent} eventClass - イベントクラス
+		 * @param {string} name - イベント名
+		 * @param {string} [subName] - サブイベント名
+		 * @returns {undefined}
+		 * @private
+		 */
+		_updateDeepEvent(es, deeps, nd, eventClass, name, subName) {
+			const esObj = es[name];
+			if (!esObj) {
+				return;
+			}
+			const deep = deeps[name].slice();
+			esObj.event.forEach((e, i) => {
+				if (this.isInside(e.pos, false)) {
+					deep[i] = 0;
+				}
+			});
+			const isEM = this.eventExists(name);
+			const isES = subName && this.eventExists(subName);
+			if (isEM || isES) {
+				const event = new eventClass(this, esObj.event, deep.slice(), esObj.isNew);
+				if (isEM) {
+					this.dispatchEvent(name, event);
+				}
+				if (isES) {
+					this.dispatchEvent(subName, event);
+				}
+			}
+			nd[name] = deep.map((d) => d + 1);
+		}
+
+		/**
 		 * 前回確認時との変更をチェック
 		 * @param {boolean} [isParentChange] - 親変更フラグ
 		 * @returns {boolean} 変更フラグ
+		 * @private
 		 */
 		_checkChangeObject(isParentChange) {
 			if (isParentChange) {
@@ -3166,111 +3212,6 @@ class Andesine {
 		 */
 		draw() {
 			return false;
-		}
-
-		/**
-		 * 全体タッチスタート時処理
-		 * @param {Object[]} es
-		 * @param {number[]} [deepTouch=[]]
-		 * @returns {undefined}
-		 */
-		_systemTouchStart(es, deepTouch = []) {
-			if (this.isDestroy || this.isDisabled) {
-				return;
-			}
-			if (this.isInside) {
-				if (!deepTouch.length) {
-					deepTouch = Array.from({ length: es.length }).fill(0);
-				}
-				es.forEach((e, i) => {
-					const isTouch = this.isInside(e.pos, false);
-					if (isTouch) {
-						deepTouch[i] = 0;
-					}
-				});
-				if (this.eventExists("touchStart")) {
-					const event = new Andesine.GameTouchStartEvent(this, es, deepTouch.slice());
-					this.dispatchEvent("touchStart", event);
-				}
-			}
-
-			deepTouch = deepTouch.map((d) => d + 1);
-
-			for (const name of this.#_layerList) {
-				this.#_children[name]._systemTouchStart(es, deepTouch.slice());
-			}
-		}
-
-		/**
-		 * 全体ホバー時処理
-		 * @param {Object[]} es
-		 * @param {boolean} [isNewHoverEvent]
-		 * @param {number[]} [deepHover=[]]
-		 * @returns {undefined}
-		 */
-		_systemHover(es, isNewHoverEvent, deepHover = []) {
-			if (this.isDestroy || this.isDisabled) {
-				return;
-			}
-
-			if (this.isInside) {
-				if (!deepHover.length) {
-					deepHover = Array.from({ length: es.length }).fill(0);
-				}
-				es.forEach((e, i) => {
-					const isHover = this.isInside(e.pos, false, false);
-					if (isHover) {
-						deepHover[i] = 0;
-					}
-				});
-				if (isNewHoverEvent && this.eventExists("hoverMove")) {
-					const event = new Andesine.GameHoverEvent(this, es, deepHover.slice());
-					this.dispatchEvent("hoverMove", event);
-				}
-				if (this.eventExists("hover")) {
-					const event = new Andesine.GameHoverEvent(this, es, deepHover.slice(), isNewHoverEvent);
-					this.dispatchEvent("hover", event);
-				}
-			}
-
-			deepHover = deepHover.map((d) => d + 1);
-
-			for (const name of this.#_layerList) {
-				this.#_children[name]._systemHover(es, isNewHoverEvent, deepHover.slice());
-			}
-		}
-
-		/**
-		 * 全体クリック時処理
-		 * @param {Object[]} es
-		 * @param {number[]} [deepClick=[]]
-		 * @returns {undefined}
-		 */
-		_systemClick(es, deepClick = []) {
-			if (this.isDestroy || this.isDisabled) {
-				return;
-			}
-			if (this.isInside) {
-				if (!deepClick.length) {
-					deepClick = Array.from({ length: es.length }).fill(0);
-				}
-				es.forEach((e, i) => {
-					const isClick = this.isInside(e.pos, false, false);
-					if (isClick) {
-						deepClick[i] = 0;
-					}
-				});
-				if (this.eventExists("click")) {
-					const event = new Andesine.GameClickEvent(this, es, deepClick.slice());
-					this.dispatchEvent("click", event);
-				}
-			}
-
-			deepClick = deepClick.map((d) => d + 1);
-
-			for (const name of this.#_layerList) {
-				this.#_children[name]._systemClick(es, deepClick.slice());
-			}
 		}
 
 		/**
@@ -4259,36 +4200,6 @@ class Andesine {
 		resetting() {
 			super.resetting();
 			this.canvasReset();
-		}
-
-		/**
-		 * 全体オブジェクト更新ループ
-		 * @param {number} skipCou - スキップ数
-		 * @param {boolean} gcf - ゲーム内時間(フレーム)
-		 * @param {boolean} [isParentChange] - 親変更フラグ
-		 * @returns {number}
-		 * @override
-		 */
-		_systemUpdate(skipCou, gcf, isParentChange) {
-			if (this.isInnerUpdate) {
-				return super._systemUpdate(skipCou, gcf, isParentChange);
-			}
-
-			const skipFrameCou = Andesine.Util.calcDoFrame(this, skipCou, gcf);
-			if (skipFrameCou === 0) {
-				return 0;
-			}
-
-			this._cache_isInCanvas = null;
-			const _isParCheck = this._checkChangeObject(isParentChange);
-			if (_isParCheck && this.hiddenToDestroy === "on") {
-				if (this.isInCanvas && !this.isInCanvas()) {
-					this.isDestroy = true;
-					return 0;
-				}
-			}
-			this.update(skipCou);
-			return 1;
 		}
 
 		update(skipCou) {
@@ -5840,7 +5751,7 @@ class Andesine {
 	 */
 	static GameTouchEvent = class extends Andesine.GameEvent {
 		#_deepList;
-		#_isThisEnable;
+		#_isThisEnable = null;
 
 		constructor(_this, es, deepList) {
 			super(_this);
@@ -5866,8 +5777,8 @@ class Andesine {
 			return this._es[0].type;
 		}
 
-		get _isThisEnable() {
-			if (this.#_isThisEnable != null) {
+		get isThisEnable() {
+			if (this.#_isThisEnable !== null) {
 				return this.#_isThisEnable;
 			}
 			this.#_isThisEnable = false;
@@ -5907,18 +5818,7 @@ class Andesine {
 	 * @returns {Andesine.GameTouchStartEvent}
 	 */
 	static GameTouchStartEvent = class extends Andesine.GameTouchEvent {
-		constructor(_this, es, deepTouch) {
-			super(_this, es, deepTouch);
-		}
-
-		/**
-		 * 自身はタッチ中かを取得
-		 * @returns {boolean}
-		 * @readonly
-		 */
-		get isTouch() {
-			return this._isThisEnable;
-		}
+		// 継承するだけ
 	};
 
 	/**
@@ -5935,15 +5835,6 @@ class Andesine {
 			super(_this, es, deepHover);
 			this.isNewHoverEvent = isNewHoverEvent;
 		}
-
-		/**
-		 * 自身はホバー中かを取得
-		 * @returns {boolean}
-		 * @readonly
-		 */
-		get isHover() {
-			return this._isThisEnable;
-		}
 	};
 
 	/**
@@ -5955,18 +5846,7 @@ class Andesine {
 	 * @returns {Andesine.GameClickEvent}
 	 */
 	static GameClickEvent = class extends Andesine.GameTouchEvent {
-		constructor(_this, es, deepClick) {
-			super(_this, es, deepClick);
-		}
-
-		/**
-		 * 自身はクリック中かを取得
-		 * @returns {boolean}
-		 * @readonly
-		 */
-		get isClick() {
-			return this._isThisEnable;
-		}
+		// 継承するだけ
 	};
 
 	// ==================================================
@@ -6022,6 +5902,8 @@ class Andesine {
 		#children = {};
 		#layerList = [];
 
+		#_event_name = "andesine_canvas";
+
 		#_cache_size;
 		#_nowQuality = "__NONE__";
 		#nowScale = 1;
@@ -6047,50 +5929,42 @@ class Andesine {
 			this.#setEvent();
 		}
 
+		/**
+		 * イベント設定
+		 * @param {boolean} remove - イベント解除
+		 * @returns {undefined}
+		 * @private
+		 */
 		#setEvent(remove = false) {
+			let ev_name = this.#_event_name;
 			if (remove) {
-				jasc.offEx("touchstart", "andesine_canvas");
-				jasc.offEx("touchmove", "andesine_canvas");
-				jasc.offEx("touchend", "andesine_canvas");
+				jasc.offEx("touchstart", ev_name);
+				jasc.offEx("touchmove", ev_name);
+				jasc.offEx("touchend", ev_name);
 				return;
 			}
-			jasc.onEx(
-				"touchstart",
-				(es) => {
-					const rect = this.canvas.getBoundingClientRect();
-					es.forEach((e) => {
-						e.pos = new Andesine.Vector2(e.clientX - rect.left, e.clientY - rect.top);
-					});
-					this.#_cache_event_touchStart = es;
-				},
-				this.canvas,
-				"andesine_canvas"
-			);
+			const canvas = this.canvas;
+			ev_name = jasc.onEx("touchstart", (es) => (this.#_cache_event_touchStart = setPos(es, canvas)), canvas, ev_name, true);
 			jasc.onEx(
 				"touchmove",
 				(es) => {
-					const rect = this.canvas.getBoundingClientRect();
-					es.forEach((e) => {
-						e.pos = new Andesine.Vector2(e.clientX - rect.left, e.clientY - rect.top);
-					});
-					this.#_cache_event_hover = es;
+					this.#_cache_event_hover = setPos(es, canvas);
 					this.#_isNewHoverEvent = true;
 				},
-				this.canvas,
-				"andesine_canvas"
+				canvas,
+				ev_name
 			);
-			jasc.onEx(
-				"touchend",
-				(es) => {
-					const rect = this.canvas.getBoundingClientRect();
-					es.forEach((e) => {
-						e.pos = new Andesine.Vector2(e.clientX - rect.left, e.clientY - rect.top);
-					});
-					this.#_cache_event_click = es;
-				},
-				this.canvas,
-				"andesine_canvas"
-			);
+			jasc.onEx("touchend", (es) => (this.#_cache_event_click = setPos(es, canvas)), canvas, ev_name);
+
+			this.#_event_name = ev_name;
+			return;
+			function setPos(es, canvas) {
+				const rect = canvas.getBoundingClientRect();
+				es.forEach((e) => {
+					e.pos = new Andesine.Vector2(e.clientX - rect.left, e.clientY - rect.top);
+				});
+				return es;
+			}
 		}
 
 		get manager() {
@@ -6231,23 +6105,36 @@ class Andesine {
 		 * @returns {undefined}
 		 */
 		_update(gcf) {
+			const es = {
+				gcf,
+			};
+			const deeps = {};
 			if (this.#_cache_event_touchStart) {
-				this._touchStart(this.#_cache_event_touchStart);
+				es.touchStart = {
+					event: this.#_cache_event_touchStart,
+				};
+				deeps.touchStart = Array.from(this.#_cache_event_touchStart.length).fill(0);
 				this.#_cache_event_touchStart = null;
 			}
 			if (this.#_cache_event_hover) {
-				this._hover(this.#_cache_event_hover, this.#_isNewHoverEvent);
-				this.#_isNewHoverEvent = true;
+				es.hover = {
+					event: this.#_cache_event_hover,
+					isNew: this.#_isNewHoverEvent,
+				};
+				deeps.hover = Array.from(this.#_cache_event_hover.length).fill(0);
+				this.#_isNewHoverEvent = false;
 			}
 			if (this.#_cache_event_click) {
-				this._click(this.#_cache_event_click);
+				es.click = {
+					event: this.#_cache_event_click,
+				};
+				deeps.click = Array.from(this.#_cache_event_click.length).fill(0);
 				this.#_cache_event_click = null;
 			}
 
 			let count = 0;
-			let skipCou = 1;
 			for (const name of this.#layerList) {
-				count += this.#children[name]._systemUpdate(skipCou, gcf, false);
+				count += this.#children[name]._systemUpdate(es, deeps, 1, false);
 			}
 			return count;
 		}
@@ -6271,24 +6158,6 @@ class Andesine {
 				count += this.#children[name]._systemDraw();
 			}
 			return count;
-		}
-
-		_touchStart(es) {
-			for (const name of this.#layerList) {
-				this.#children[name]._systemTouchStart(es);
-			}
-		}
-
-		_hover(es, isNewHoverEvent) {
-			for (const name of this.#layerList) {
-				this.#children[name]._systemHover(es, isNewHoverEvent);
-			}
-		}
-
-		_click(es) {
-			for (const name of this.#layerList) {
-				this.#children[name]._systemClick(es);
-			}
 		}
 
 		/**

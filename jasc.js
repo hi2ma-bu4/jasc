@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.8
+// jasc.js Ver.1.14.9
 
 /*
 ! ！！注意！！
@@ -267,14 +267,14 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 *- ゲームエンジン動作時
 * game.isDrawing						//描画可能か
 * game.doFps							//現在のFPS
-* game._canvas					//ゲームに使用されているcanvas
+* game.canvas					//ゲームに使用されているcanvas
 * game.ctx						//ゲームに使用されているctx
 
 */
 /*
 ? jasc起動時読み込みライブラリ(jasc.initSetting.useLib)
 *- 自作
-* andesine					//jasc拡張ゲームライブラリ
+* andesine					//jasc拡張2D描画ライブラリ
 * kunzite					//html → markdown(KaTeX)
 * gitrine					//localStorageの保存時に圧縮
 * zircon					//暗号化
@@ -343,10 +343,16 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 
 // 説明書はここまで
 
+if (typeof window === "undefined") {
+	throw new Error("jasc.jsはブラウザメインスレッドで実行して下さい。\nWebWorkerにはjascWorker.jsを読み込んで下さい。");
+}
+
 class Jasc {
 	//##################################################
 	// 内部使用静的プライベート定数
 	//##################################################
+	static jascType = "jasc";
+
 	static #_RE_REGEXP = /[\\^$.*+?()[\]{}|]/g;
 
 	static #_ACQ_REGEXP = /[ :\[\]+>]|^.+[\.#]/;
@@ -1976,10 +1982,13 @@ class Jasc {
 		}
 		if (Jasc.objHasOwnProperty(this.#jasc_events, eventType)[0]) {
 			if (callback && typeof callback == "function") {
+				const ev = this.#jasc_events[eventType];
 				if (name === "") {
-					name = Jasc.setAssociativeAutoName(this.#jasc_events[eventType], callback, "__jasc");
+					name = Jasc.setAssociativeAutoName(ev, callback, "__jasc");
+				} else if (ev[name]) {
+					name = jasc.setAssociativeAutoName(ev, callback, name);
 				} else {
-					this.#jasc_events[eventType][name] = callback;
+					ev[name] = callback;
 				}
 
 				// 旬を逃しても一応実行はさせる
@@ -2798,7 +2807,7 @@ class Jasc {
 		if (Jasc.objHasOwnProperty(this.#jasc_exEvents, eventType)[0]) {
 			if (Jasc.isAssociative(this.#jasc_exEvents[eventType])) {
 				if (name != "") {
-					if (!Jasc.isAssociative(typeof this.#jasc_exEvents[eventType]?.[name])) {
+					if (!Jasc.isAssociative(this.#jasc_exEvents[eventType]?.[name])) {
 						return 2;
 					}
 					const data = this.#jasc_exEvents[eventType][name];
@@ -2866,10 +2875,13 @@ class Jasc {
 			};
 			const _dispatch = this._dispatchExEvent(eventType, callback, obj);
 			obj.callback = _dispatch;
+			const ev = this.#jasc_exEvents[eventType];
 			if (name === "") {
-				name = jasc.setAssociativeAutoName(this.#jasc_exEvents[eventType], obj, "__jasc");
+				name = Jasc.setAssociativeAutoName(ev, obj, "__jasc");
+			} else if (ev[name]) {
+				name = Jasc.setAssociativeAutoName(ev, obj, name);
 			} else {
-				this.#jasc_exEvents[eventType][name] = obj;
+				ev[name] = obj;
 			}
 			switch (eventType) {
 				case "touchstart":
