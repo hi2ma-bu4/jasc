@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.11
+// jasc.js Ver.1.14.12
 
 /*
 ! ！！注意！！
@@ -2675,8 +2675,8 @@ class Jasc {
 		elem = this.jQueryObjToDOM(elem);
 		const _this = this;
 		return Array.from(elem.childNodes).every((e) => {
-			if (Jasc._textNode_allowedNodeType.indexOf(e.nodeType) >= 0) return true;
-			return e.nodeType === Node.ELEMENT_NODE && Jasc._textNode_allowedTextTag.indexOf(e.tagName) >= 0 && _this.isTextNode(e);
+			if (_this._textNode_allowedNodeType.indexOf(e.nodeType) >= 0) return true;
+			return e.nodeType === Node.ELEMENT_NODE && _this._textNode_allowedTextTag.indexOf(e.tagName) >= 0 && _this.isTextNode(e);
 		});
 	}
 
