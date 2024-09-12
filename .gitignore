@@ -1,4 +1,5 @@
-index.html
+*.html
+*.htm
+*.css
 main.js
-style.css
 img/*

@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.9
+// jasc.js Ver.1.14.10
 
 /*
 ! ！！注意！！
@@ -193,6 +193,8 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 - jasc.showOpenFileDialog(accept = "*", multiple = false, timeout = 180000, directory = false)
 * jasc.getDropFilesEvent(dom = "body", callback)						//ドロップされたファイルを取得
 - async Jasc._getDropFilesEvent(items, callback)						//getDropFilesEventの内部処理用
+* Jasc.arrayToFileList(files)											//File(配列)をFileListに変換
+- jasc.arrayToFileList(files)
 * Jasc.getFileType(fileObj)												//ファイルの種類を判定
 - jasc.getFileType(fileObj)
 * Jasc.getMimeType(ext)													//拡張子からMIMEタイプを取得
@@ -1254,7 +1256,7 @@ class Jasc {
 		});
 		// モバイル端末か
 		this.objDefineProperty(this.#jasc_readonlyData, "isMobile", {
-			value() {
+			get() {
 				return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 			},
 		});
@@ -4876,6 +4878,30 @@ class Jasc {
 		await Promise.all(calcFullPathPerItems);
 		callback?.(files);
 	}
+
+	/**
+	 * File(配列)をFileListに変換
+	 * @param {File[] | File} files - ファイル配列
+	 * @returns {FileList} ファイルリスト
+	 * @static
+	 */
+	static arrayToFileList(files) {
+		const dataTransfer = new DataTransfer();
+		if (Array.isArray(files)) {
+			files.forEach((file) => {
+				dataTransfer.items.add(file);
+			});
+		} else {
+			dataTransfer.items.add(files);
+		}
+		return dataTransfer.files;
+	}
+	/**
+	 * File(配列)をFileListに変換
+	 * @param {File[] | File} files - ファイル配列
+	 * @returns {FileList} ファイルリスト
+	 */
+	arrayToFileList = Jasc.arrayToFileList;
 
 	/**
 	 * ファイルの種類を判定
