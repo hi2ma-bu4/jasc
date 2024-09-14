@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.15
+// jasc.js Ver.1.14.16
 
 /*
 ! ！！注意！！
@@ -1910,7 +1910,7 @@ class Jasc {
 				});
 				if (changeFlag) {
 					// 一応実行
-					this.#_autoImageErrorGet();
+					_this.#_autoImageErrorGet();
 				}
 			});
 			this.#lazyElemObserver = lazyElemObserver;
