@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.13
+// jasc.js Ver.1.14.14
 
 /*
 ! ！！注意！！
@@ -1810,7 +1810,7 @@ class Jasc {
 	#_autoImageErrorGet() {
 		let setCou = 0;
 		let skipCou = 0;
-		let imgs = this.acq("!img:not(.jascNotImgErrGet)");
+		let imgs = this.acq("!img:not(.jascNotImgErrGet):not(.jascLazy)");
 		for (let elem of imgs) {
 			if (elem.classList.contains("jascImgErrGetter")) {
 				skipCou++;
@@ -1893,11 +1893,10 @@ class Jasc {
 						switch (lazyElem.tagName) {
 							case "IMG":
 								lazyElem.src = lazyElem.dataset.src;
-								if (typeof lazyElem.dataset.srcset === "undefined") {
-									_this._ccLog.warn(`LazyLoad data-src がありません`, "system");
-								} else {
+								if (typeof lazyElem.dataset.srcset !== "undefined") {
 									lazyElem.srcset = lazyElem.dataset.srcset;
 								}
+								break;
 							default:
 								_this._ccLog.warn(`LazyLoad タグ${lazyElem.tagName}は未対応です`, "system");
 								break;
