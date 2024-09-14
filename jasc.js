@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.14
+// jasc.js Ver.1.14.15
 
 /*
 ! ！！注意！！
@@ -1887,6 +1887,7 @@ class Jasc {
 
 			const _this = this;
 			const lazyElemObserver = new IntersectionObserver(function (entries, observer) {
+				let changeFlag = false;
 				entries.forEach(function (entry) {
 					if (entry.isIntersecting) {
 						let lazyElem = entry.target;
@@ -1904,8 +1905,13 @@ class Jasc {
 						lazyElem.classList.remove("jascLazy");
 						lazyElemObserver.unobserve(lazyElem);
 						_this._dispatchEvent("lazyLoad", lazyElem);
+						changeFlag = true;
 					}
 				});
+				if (changeFlag) {
+					// 一応実行
+					this.#_autoImageErrorGet();
+				}
 			});
 			this.#lazyElemObserver = lazyElemObserver;
 		}
