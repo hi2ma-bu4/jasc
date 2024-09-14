@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.12
+// jasc.js Ver.1.14.13
 
 /*
 ! ！！注意！！
@@ -34,6 +34,12 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 　jasc.addEventListener("exLinkGet")と
 　jasc.addEventListener("exTextLinkGet")を実行しない
 
+* IntersectionObserver時実行
+.jascLazyクラスの設置されたDOMに以下の処理を実行する。
+　・imgタグは<img src="dummy.jpg" data-src="sample.jpg">のように
+　　画面内に入った時data-srcの画像を遅延読み込みする
+　他は適宜作成。
+
 */
 
 /*
@@ -42,9 +48,10 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 *- .jascImgErrGetter	: imgタグエラー時自動処理の巡回確認用
 *+ .jascNotExLinkGet	: [ユーザー付与]外部リンク時自動処理の巡回拒否用
 *- .jascExLinkGetter	: 外部リンク時自動処理の巡回確認用
-*- .jascExLink		: 外部リンク(cssで処理する用)
-*- .jascExTextLink	: 外部リンク(文字に対してのリンクのみ)(cssで処理する用)
-
+*- .jascExLink			: 外部リンク(cssで処理する用)
+*- .jascExTextLink		: 外部リンク(文字に対してのリンクのみ)(cssで処理する用)
+*+ .jascLazy			: [ユーザー付与]遅延読み込み指定用
+*- .jascLazyGetter		: 遅延読み込み時巡回確認用
 
 */
 
@@ -578,6 +585,7 @@ class Jasc {
 		resizeSkip: false,
 
 		jQueryLoad: false,
+		lazyObserverSet: null,
 	};
 
 	#jascLibTree = {
@@ -760,6 +768,7 @@ class Jasc {
 		"exLinkGet",
 		"exTextLinkGet",
 		"changeDOM",
+		"lazyLoad",
 
 		// game関連
 		"canvasAdd",
@@ -812,6 +821,9 @@ class Jasc {
 		fileTypeReg: Jasc.#_FILETYPE_REG_LIST,
 		fileTypeMime: Jasc.#_FILETYPE_MIME_LIST,
 	};
+
+	// LazyLoad用
+	#lazyElemObserver;
 
 	// fps取得時使用
 	#_fps_startTime = 0;
@@ -988,6 +1000,8 @@ class Jasc {
 			if (document.readyState === "interactive") {
 				//画像err取得
 				_this.#_autoImageErrorGet();
+				// 遅延読み込み自動処理を実行
+				_this.#_autoLazyLoad();
 
 				_this._dispatchEvent("interactive");
 			}
@@ -1045,6 +1059,8 @@ class Jasc {
 
 		//画像err取得
 		this.#_autoImageErrorGet();
+		// 遅延読み込み自動処理を実行
+		this.#_autoLazyLoad();
 
 		//* DOM変更検知
 		function obs(records) {
@@ -1052,6 +1068,8 @@ class Jasc {
 			this.#_autoImageErrorGet();
 			//外部リンク判定
 			this.#_autoExLinkGet();
+			// 遅延読み込み自動処理を実行
+			this.#_autoLazyLoad();
 
 			this._dispatchEvent("changeDOM", records);
 		}
@@ -1082,6 +1100,8 @@ class Jasc {
 		this.#_autoImageErrorGet();
 		// 外部リンク判定
 		this.#_autoExLinkGet();
+		// 遅延読み込み自動処理を実行
+		this.#_autoLazyLoad();
 		// イベントリスナー更新
 		this.#_eventListenerInit();
 		// プラグイン更新
@@ -1125,6 +1145,8 @@ class Jasc {
 		this.#_autoImageErrorGet();
 		// 外部リンク判定
 		this.#_autoExLinkGet();
+		// 遅延読み込み自動処理を実行
+		this.#_autoLazyLoad();
 		// イベントリスナー更新
 		this.#_eventListenerInit();
 		// プラグイン更新
@@ -1795,8 +1817,8 @@ class Jasc {
 				continue;
 			}
 			elem.classList.add("jascImgErrGetter");
-			const _this = this;
 			if (!elem.onerror) {
+				const _this = this;
 				elem.onerror = function (e) {
 					_this._dispatchEvent("imageLoadError", e);
 
@@ -1849,6 +1871,60 @@ class Jasc {
 		let linkLen = links.length;
 		if (linkLen - skipCou > 0) {
 			this._ccLog.log(`onSetExLink[${setCou}/${linkLen - skipCou}(${linkLen})]`, "data");
+		}
+	}
+
+	#_autoLazyLoad() {
+		if (!this.#isFlags.lazyObserverSet) {
+			if (this.#isFlags.lazyObserverSet === false) {
+				return;
+			}
+			if (!("IntersectionObserver" in window)) {
+				this.#isFlags.lazyObserverSet = false;
+				return;
+			}
+			this.#isFlags.lazyObserverSet = true;
+
+			const _this = this;
+			const lazyElemObserver = new IntersectionObserver(function (entries, observer) {
+				entries.forEach(function (entry) {
+					if (entry.isIntersecting) {
+						let lazyElem = entry.target;
+						switch (lazyElem.tagName) {
+							case "IMG":
+								lazyElem.src = lazyElem.dataset.src;
+								if (typeof lazyElem.dataset.srcset === "undefined") {
+									_this._ccLog.warn(`LazyLoad data-src がありません`, "system");
+								} else {
+									lazyElem.srcset = lazyElem.dataset.srcset;
+								}
+							default:
+								_this._ccLog.warn(`LazyLoad タグ${lazyElem.tagName}は未対応です`, "system");
+								break;
+						}
+						lazyElem.classList.remove("jascLazy");
+						lazyElemObserver.unobserve(lazyElem);
+						_this._dispatchEvent("lazyLoad", lazyElem);
+					}
+				});
+			});
+			this.#lazyElemObserver = lazyElemObserver;
+		}
+		let setCou = 0;
+		let skipCou = 0;
+		let elems = this.acq(".jascLazy");
+		for (let elem of elems) {
+			if (elem.classList.contains("jascLazyGetter")) {
+				skipCou++;
+				continue;
+			}
+			elem.classList.add("jascLazyGetter");
+			this.#lazyElemObserver.observe(elem);
+			setCou++;
+		}
+		let elemLen = elems.length;
+		if (elemLen - skipCou > 0) {
+			this._ccLog.log(`onLazy[${setCou}/${elemLen - skipCou}(${elemLen})]`, "data");
 		}
 	}
 
