@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.16
+// jasc.js Ver.1.14.17
 
 /*
 ! ！！注意！！
@@ -46,6 +46,7 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 ? jasc使用html class
 *+ .jascNotImgErrGet	: [ユーザー付与]imgタグエラー時自動処理の巡回拒否用
 *- .jascImgErrGetter	: imgタグエラー時自動処理の巡回確認用
+*- .jascImgLoading		: imgタグ読み込み中
 *+ .jascNotExLinkGet	: [ユーザー付与]外部リンク時自動処理の巡回拒否用
 *- .jascExLinkGetter	: 外部リンク時自動処理の巡回確認用
 *- .jascExLink			: 外部リンク(cssで処理する用)
@@ -1817,15 +1818,17 @@ class Jasc {
 				continue;
 			}
 			elem.classList.add("jascImgErrGetter");
+			elem.classList.add("jascImgLoading");
 			if (!elem.onerror) {
 				const _this = this;
 				elem.onerror = function (e) {
-					_this._dispatchEvent("imageLoadError", e);
-
 					elem.onerror = elem.onload = null;
+					elem.classList.remove("jascImgLoading");
+					_this._dispatchEvent("imageLoadError", e);
 				};
 				elem.onload = function () {
 					elem.onerror = elem.onload = null;
+					elem.classList.remove("jascImgLoading");
 				};
 				setCou++;
 			}
