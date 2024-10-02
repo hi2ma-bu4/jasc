@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.18
+// jasc.js Ver.1.14.19
 
 // Copyright (c) 2022-2024 hi2ma-bu4(snows)
 // License: AGPL-3.0 license
@@ -1820,8 +1820,10 @@ class Jasc {
 			const cl = elem.classList;
 			if (cl.contains("jascImgErrGetter")) {
 				if (elem.complete && cl.contains("jascImgLoading")) {
-					elem.onerror = elem.onload = null;
 					cl.remove("jascImgLoading");
+					setTimeout(() => {
+						elem.onerror = elem.onload = null;
+					}, 1000);
 				}
 				skipCou++;
 				continue;
