@@ -1,4 +1,8 @@
-// jasc.js Ver.1.14.17
+// jasc.js Ver.1.14.18
+
+// Copyright (c) 2022-2024 hi2ma-bu4(snows)
+// License: AGPL-3.0 license
+// https://github.com/hi2ma-bu4/jasc/blob/main/LICENSE
 
 /*
 ! ！！注意！！
@@ -1813,22 +1817,27 @@ class Jasc {
 		let skipCou = 0;
 		let imgs = this.acq("!img:not(.jascNotImgErrGet):not(.jascLazy)");
 		for (let elem of imgs) {
-			if (elem.classList.contains("jascImgErrGetter")) {
+			const cl = elem.classList;
+			if (cl.contains("jascImgErrGetter")) {
+				if (elem.complete && cl.contains("jascImgLoading")) {
+					elem.onerror = elem.onload = null;
+					cl.remove("jascImgLoading");
+				}
 				skipCou++;
 				continue;
 			}
-			elem.classList.add("jascImgErrGetter");
-			elem.classList.add("jascImgLoading");
+			cl.add("jascImgErrGetter");
 			if (!elem.onerror) {
+				cl.add("jascImgLoading");
 				const _this = this;
 				elem.onerror = function (e) {
 					elem.onerror = elem.onload = null;
-					elem.classList.remove("jascImgLoading");
+					cl.remove("jascImgLoading");
 					_this._dispatchEvent("imageLoadError", e);
 				};
 				elem.onload = function () {
 					elem.onerror = elem.onload = null;
-					elem.classList.remove("jascImgLoading");
+					cl.remove("jascImgLoading");
 				};
 				setCou++;
 			}
