@@ -1,5 +1,6 @@
 *.html
 *.htm
 *.css
-main.js
+/*.js
+!jasc.js
 img/*

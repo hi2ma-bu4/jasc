@@ -1,7 +1,7 @@
-// jasc.js Ver.1.14.19
+// jasc.js Ver.1.14.20
 
 // Copyright (c) 2022-2024 hi2ma-bu4(snows)
-// License: AGPL-3.0 license
+// License: LGPL-2.1 license
 // https://github.com/hi2ma-bu4/jasc/blob/main/LICENSE
 
 /*
@@ -216,6 +216,9 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 - jasc.allowNotification()
 * jasc.sendNotification(title, text, icon)								//通知送信
 - jasc.sendNotification(title, text, icon)
+*- Worker
+* Jasc.unregisterServiceWorker()										//ServiceWorkerの登録解除
+- jasc.unregisterServiceWorker()
 *- class同士の演算補助
 * Jasc.customOperator(obj, op = "+")									//class同士の演算補助
 - jasc.customOperator(obj, op = "+")
@@ -5115,6 +5118,39 @@ class Jasc {
 	 * @returns {Notification} 通知オブジェクト
 	 */
 	sendNotification = Jasc.sendNotification;
+
+	//======================
+	// Worker
+	//======================
+
+	/**
+	 * Service Workerを削除
+	 * @returns {number} 削除件数
+	 * @async
+	 * @static
+	 */
+	static async unregisterServiceWorker() {
+		const registrations = await navigator.serviceWorker.getRegistrations();
+		const cou = registrations.length;
+		if (cou) {
+			// service workerを停止
+			const unregisterPromises = registrations.map((registration) => registration.unregister());
+			await Promise.all(unregisterPromises);
+
+			// cache storageをクリア
+			const keys = await caches.keys();
+			const cacheDeletePromises = keys.map((key) => caches.delete(key));
+			await Promise.all(cacheDeletePromises);
+		}
+		return cou;
+	}
+
+	/**
+	 * Service Workerを削除
+	 * @returns {number} 削除件数
+	 * @async
+	 */
+	unregisterServiceWorker = Jasc.unregisterServiceWorker;
 
 	//======================
 	// class同士の演算補助
