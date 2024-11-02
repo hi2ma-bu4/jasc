@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.20
+// jasc.js Ver.1.14.21
 
 // Copyright (c) 2022-2024 hi2ma-bu4(snows)
 // License: LGPL-2.1 license
@@ -211,11 +211,21 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 - jasc.getFileType(fileObj)
 * Jasc.getMimeType(ext)													//拡張子からMIMEタイプを取得
 - jasc.getMimeType(ext)
+* jasc.imgToBlob(img)													//描画オブジェクトからBlobに変換
+* jasc.fileToImg(file, img)												//FileからImageに変換
+* jasc.canvasToImg(canvas)												//CanvasからImageに変換
 *- 通知
 * Jasc.allowNotification()												//通知許可 判定&取得
 - jasc.allowNotification()
 * jasc.sendNotification(title, text, icon)								//通知送信
 - jasc.sendNotification(title, text, icon)
+*- カメラ
+* jasc.startCamera(video, width = 640, opt = { video: true, audio: false })	//カメラを起動し、映像(他stream)を取得する
+* Jasc.stopCamera(stream)												//カメラを止める
+- jasc.stopCamera(stream)
+* Jasc.stopStream(stream)												//Streamを全停止する
+- jasc.stopStream(stream)
+* jasc.takePicture(video, outType = "file")								//映像の現在のフレームを取得する
 *- Worker
 * Jasc.unregisterServiceWorker()										//ServiceWorkerの登録解除
 - jasc.unregisterServiceWorker()
@@ -5059,6 +5069,119 @@ class Jasc {
 	 */
 	getMimeType = Jasc.getMimeType;
 
+	/**
+	 * 描画オブジェクトからBlobに変換
+	 * @param {HTMLImageElement | HTMLCanvasElement | string} img - 描画オブジェクト
+	 * @returns {Promise<Blob>} Blob
+	 */
+	imgToBlob(img) {
+		return new Promise(function (resolve) {
+			if (typeof img === "string") {
+				img = this.acq(img);
+				if (Array.isArray(img)) {
+					img = img[0];
+				}
+			}
+			if (img instanceof HTMLImageElement) {
+				const canvas = document.createElement("canvas");
+				canvas.width = img.width;
+				canvas.height = img.height;
+				const ctx = canvas.getContext("2d");
+				ctx.drawImage(img, 0, 0);
+				img = canvas;
+			}
+			if (!(img instanceof HTMLCanvasElement)) {
+				reject("img is not Image");
+				return;
+			}
+			try {
+				img.toBlob(resolve, "image/png");
+			} catch (e) {
+				const base64Data = img.toDataURL("image/png").split(",")[1];
+				const byteCharacters = atob(base64Data);
+				const byteNumbers = new Uint8Array(byteCharacters.length);
+				for (let i = 0; i < byteCharacters.length; i++) {
+					byteNumbers[i] = byteCharacters.charCodeAt(i);
+				}
+				const blob = new Blob([byteNumbers], { type: "image/png" });
+				resolve(blob);
+			}
+		});
+	}
+
+	/**
+	 * FileからImageに変換
+	 * @param {File} file - ファイル
+	 * @param {HTMLImageElement | string} [img] - 描画オブジェクト
+	 * @returns {Promise<HTMLImageElement>} Image
+	 */
+	fileToImg(file, img) {
+		return new Promise((resolve, reject) => {
+			if (typeof img === "string") {
+				img = this.acq(img);
+				if (Array.isArray(img)) {
+					img = img[0];
+				}
+			}
+			if (!img) {
+				img = new Image();
+			}
+			if (!(img instanceof HTMLImageElement)) {
+				reject("img is not Image");
+				return;
+			}
+
+			const reader = new FileReader();
+			reader.onload = () => {
+				reader.onload = reader.onerror = null;
+				img.onload = () => {
+					img.onload = img.onerror = null;
+					resolve(img);
+				};
+				img.onerror = () => {
+					img.onload = img.onerror = null;
+					reject(reader.error);
+				};
+				img.src = reader.result;
+			};
+			reader.onerror = () => {
+				reader.onload = reader.onerror = null;
+				reject(reader.error);
+			};
+			reader.readAsDataURL(file);
+		});
+	}
+
+	/**
+	 * CanvasからImageに変換
+	 * @param {HTMLCanvasElement | string} canvas - Canvas
+	 * @returns {Promise<HTMLImageElement>} Image
+	 */
+	canvasToImg(canvas) {
+		return new Promise((resolve, reject) => {
+			if (typeof canvas === "string") {
+				canvas = this.acq(canvas);
+				if (Array.isArray(canvas)) {
+					canvas = canvas[0];
+				}
+			}
+			if (!(canvas instanceof HTMLCanvasElement)) {
+				reject("canvas is not Canvas");
+				return;
+			}
+			const img = new Image();
+			img.onload = () => {
+				img.onload = img.onerror = null;
+				resolve(img);
+			};
+			img.onerror = () => {
+				img.onload = img.onerror = null;
+				reject("img is not Image");
+			};
+			img.src = canvas.toDataURL("image/png");
+		});
+	}
+
 	//======================
 	// 通知
 	//======================
@@ -5118,6 +5241,171 @@ class Jasc {
 	 * @returns {Notification} 通知オブジェクト
 	 */
 	sendNotification = Jasc.sendNotification;
+
+	//======================
+	// カメラ
+	//======================
+
+	/**
+	 * カメラを起動し、映像(他stream)を取得する
+	 * @param {HTMLVideoElement | string | "stream"} [video] - 映像を取得するDOM("stream"を指定するとストリームを取得する)
+	 * @param {number} [width=640] - 映像の幅
+	 * @param {object} [opt] - オプション
+	 * @returns {Promise<HTMLVideoElement>} 映像
+	 */
+	startCamera(video, width = 640, opt = { video: true, audio: false }) {
+		return new Promise((resolve, reject) => {
+			if (!navigator.mediaDevices) {
+				reject("navigator.mediaDevices is not supported");
+				return;
+			}
+
+			if (video !== "stream") {
+				if (typeof video === "string") {
+					video = this.acq(video);
+					if (Array.isArray(video)) {
+						video = video[0];
+					}
+				}
+				if (!video) {
+					video = document.createElement("video");
+				}
+				if (!(video instanceof HTMLVideoElement)) {
+					reject("video is not HTMLVideoElement");
+					return;
+				}
+			}
+			navigator.mediaDevices
+				.getUserMedia({
+					// オプション
+					video: opt.video ?? true,
+					audio: opt.audio ?? false,
+				})
+				.then((stream) => {
+					if (video === "stream") {
+						resolve(stream);
+						return;
+					}
+					video.srcObject = stream;
+					video.play();
+				})
+				.catch((err) => {
+					video?.removeEventListener("canplay", cp, false);
+					reject(err);
+				});
+
+			if (video === "stream") {
+				return;
+			}
+			video.addEventListener("canplay", cp, false);
+			function cp(ev) {
+				video.removeEventListener("canplay", cp, false);
+				const height = video.videoHeight / (video.videoWidth / width);
+
+				// Firefox で高さを取得出来ない時があるので
+				// 4:3 に合わせる
+				if (isNaN(height)) {
+					height = width / (4 / 3);
+				}
+
+				video.setAttribute("width", width);
+				video.setAttribute("height", height);
+				resolve(video);
+			}
+		});
+	}
+
+	/**
+	 * カメラを止める
+	 * @param {HTMLVideoElement | MediaStream} stream - 映像
+	 * @returns {undefined}
+	 * @static
+	 */
+	static stopCamera(stream) {
+		if (stream instanceof HTMLVideoElement) {
+			const v = stream;
+			v.pause();
+			stream = v.srcObject;
+		}
+		if (!(stream instanceof MediaStream)) {
+			return;
+		}
+		stream.getTracks().forEach((track) => {
+			track.stop();
+		});
+	}
+	/**
+	 * カメラを止める
+	 * @param {HTMLVideoElement | MediaStream} stream - 映像
+	 * @returns {undefined}
+	 */
+	stopCamera = Jasc.stopCamera;
+
+	/**
+	 * Streamを全停止する
+	 * @param {HTMLVideoElement | MediaStream} stream - Stream
+	 * @returns {undefined}
+	 * @static
+	 */
+	static stopStream = Jasc.stopCamera;
+	/**
+	 * Streamを全停止する
+	 * @param {HTMLVideoElement | MediaStream} stream - Stream
+	 * @returns {undefined}
+	 */
+	stopStream = Jasc.stopCamera;
+
+	/**
+	 * 映像の現在のフレームを取得する
+	 * @param {HTMLVideoElement} video - 映像
+	 * @param {"file" | "image" | "blob" | "canvas"} [outType="blob"] - 出力タイプ
+	 * @returns {Promise<File>} ファイル
+	 */
+	takePicture(video, outType = "file") {
+		return new Promise((resolve, reject) => {
+			if (!(video instanceof HTMLVideoElement)) {
+				reject("video is not HTMLVideoElement");
+				return;
+			}
+			if (typeof outType !== "string") {
+				reject("outType is not string");
+				return;
+			}
+			const canvas = document.createElement("canvas");
+			canvas.width = video.videoWidth;
+			canvas.height = video.videoHeight ?? canvas.width / (4 / 3);
+			const ctx = canvas.getContext("2d");
+			ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+			outType = outType.toLowerCase();
+			switch (outType) {
+				case "blob":
+				case "file":
+					this.imgToBlob(canvas)
+						.then((blob) => {
+							if (outType === "blob") {
+								resolve(blob);
+								return;
+							}
+							const file = new File([blob], "image.png", {
+								type: "image/png",
+							});
+							resolve(file);
+						})
+						.catch(reject);
+					break;
+				case "image":
+					this.canvasToImg(canvas).then(resolve).catch(reject);
+					break;
+				case "canvas":
+					resolve(canvas);
+					break;
+				default:
+					reject("outType is not supported");
+					break;
+			}
+		});
+	}
 
 	//======================
 	// Worker
