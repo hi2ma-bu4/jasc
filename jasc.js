@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.26.2
+// jasc.js Ver.1.14.26.3
 
 // Copyright (c) 2022-2024 hi2ma-bu4(snows)
 // License: LGPL-2.1 license
@@ -4423,7 +4423,7 @@ class Jasc {
 		if (number <= 0) {
 			number = arr.length;
 		} else if (arr.length < number) {
-			this._ccLog.log("第2引数は第1引数の配列数より少なくして下さい", "error");
+			this._ccLog.warn("第2引数は第1引数の配列数より少なくして下さい");
 			return false;
 		}
 		let li = arr.length;
@@ -4891,7 +4891,7 @@ class Jasc {
 			};
 			input.click();
 			setTimeout(() => {
-				reject("timeout!");
+				reject(new Error("timeout!"));
 			}, timeout);
 		});
 	}
@@ -5091,7 +5091,7 @@ class Jasc {
 				img = canvas;
 			}
 			if (!(img instanceof HTMLCanvasElement)) {
-				reject("img is not Image");
+				reject(new TypeError("img is not Image"));
 				return;
 			}
 			try {
@@ -5127,7 +5127,7 @@ class Jasc {
 				img = new Image();
 			}
 			if (!(img instanceof HTMLImageElement)) {
-				reject("img is not Image");
+				reject(new TypeError("img is not Image"));
 				return;
 			}
 
@@ -5166,7 +5166,7 @@ class Jasc {
 				}
 			}
 			if (!(canvas instanceof HTMLCanvasElement)) {
-				reject("canvas is not Canvas");
+				reject(new TypeError("canvas is not Canvas"));
 				return;
 			}
 			const img = new Image();
@@ -5176,7 +5176,7 @@ class Jasc {
 			};
 			img.onerror = () => {
 				img.onload = img.onerror = null;
-				reject("img is not Image");
+				reject(new TypeError("img is not Image"));
 			};
 			img.src = canvas.toDataURL("image/png");
 		});
@@ -5194,7 +5194,7 @@ class Jasc {
 	static allowNotification() {
 		return new Promise((resolve, reject) => {
 			if (!window.Notification) {
-				reject("このブラウザは通知機能をサポートしていません");
+				reject(new ReferenceError("Notification is not supported"));
 				return;
 			}
 			if (Notification.permission === "granted") {
@@ -5256,7 +5256,7 @@ class Jasc {
 	startCamera(video, width = 640, opt = { video: { facingMode: "user" }, audio: false }) {
 		return new Promise((resolve, reject) => {
 			if (!navigator.mediaDevices) {
-				reject("navigator.mediaDevices is not supported");
+				reject(new ReferenceError("navigator.mediaDevices is not supported"));
 				return;
 			}
 
@@ -5271,7 +5271,7 @@ class Jasc {
 					video = document.createElement("video");
 				}
 				if (!(video instanceof HTMLVideoElement)) {
-					reject("video is not HTMLVideoElement");
+					reject(new TypeError("video is not HTMLVideoElement"));
 					return;
 				}
 			}
@@ -5364,11 +5364,11 @@ class Jasc {
 	takePicture(video, outType = "file") {
 		return new Promise((resolve, reject) => {
 			if (!(video instanceof HTMLVideoElement)) {
-				reject("video is not HTMLVideoElement");
+				reject(new TypeError("video is not HTMLVideoElement"));
 				return;
 			}
 			if (typeof outType !== "string") {
-				reject("outType is not string");
+				reject(new TypeError("outType is not string"));
 				return;
 			}
 			const canvas = document.createElement("canvas");
@@ -5401,7 +5401,7 @@ class Jasc {
 					resolve(canvas);
 					break;
 				default:
-					reject("outType is not supported");
+					reject(new TypeError("outType is not supported"));
 					break;
 			}
 		});
@@ -6098,7 +6098,7 @@ class Jasc {
 					name = url;
 				}
 				if (!url) {
-					reject("No URL");
+					reject(new Error("No URL"));
 					return;
 				}
 				this.#url2Map.set(url, name);
