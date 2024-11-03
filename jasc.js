@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.25
+// jasc.js Ver.1.14.26
 
 // Copyright (c) 2022-2024 hi2ma-bu4(snows)
 // License: LGPL-2.1 license
@@ -5944,7 +5944,7 @@ class Jasc {
 				}
 				len = data.length;
 				if (typeof data[len - 1] === "string") {
-					type = data.pop();
+					const type = data.pop();
 					if (this.style[type]) {
 						logStyle = this.style[type];
 					} else if (/:/.test(type)) {
