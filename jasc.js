@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.23
+// jasc.js Ver.1.14.24
 
 // Copyright (c) 2022-2024 hi2ma-bu4(snows)
 // License: LGPL-2.1 license
@@ -5924,17 +5924,43 @@ class Jasc {
 				this.warn("不明なデータ設定");
 			}
 		}
+
 		/**
-		 * ログ表示
-		 * @param {any} str - ログ
-		 * @param {string} type - 表示スタイル名(又はcssスタイル)
-		 * @param {boolean} [obligation=false] - 必須表示
-		 * @returns {undefined}
+		 * フォーマットして出力
+		 * @param {any[]} data - データ
+		 * @param {function} output - 出力関数
+		 * @private
 		 */
-		log(str, type, obligation = false) {
+		_formatOutput(data, output) {
+			let len = data.length;
+			if (len == 0) {
+				return;
+			}
+			if (len <= 1) {
+				if (!(this.#isDebug || (this.#isOblInd && obligation))) {
+					return;
+				}
+				output(data[0]);
+				return;
+			}
+			let obligation = null;
+			if (typeof data[len - 1] === "boolean") {
+				obligation = data.pop();
+			}
+			len = data.length;
+			let type = "";
+			if (typeof data[len - 1] === "string") {
+				type = data.pop();
+			} else if (typeof obligation === "boolean") {
+				data.push(obligation);
+				obligation = null;
+			}
+
 			if (!(this.#isDebug || (this.#isOblInd && obligation))) {
 				return;
 			}
+			len = data.length;
+
 			let logStyle = "";
 			if (typeof type == "string") {
 				if (this.style[type]) {
@@ -5943,11 +5969,39 @@ class Jasc {
 					logStyle = type;
 				}
 			}
-			let pre = "";
+			let formatText = "%c";
 			if (this.#prefix) {
-				pre = `[${this.#prefix}]`;
+				formatText += `[${this.#prefix}]`;
 			}
-			console.log(`%c${pre}${str}`, logStyle);
+
+			const fArr = [];
+			for (let i = 0; i < len; i++) {
+				switch (typeof data[i]) {
+					case "string":
+					case "number":
+					case "boolean":
+						fArr.push("%s");
+						break;
+					case "bigint":
+					default:
+						fArr.push("%o");
+						break;
+				}
+			}
+
+			formatText += fArr.join(" ");
+			output(formatText, logStyle, ...data);
+		}
+
+		/**
+		 * ログ表示
+		 * @param {...any} data - ログ
+		 * @param {string} type - [最後-1]表示スタイル名(又はcssスタイル)
+		 * @param {boolean} [obligation=false] - [最後]必須表示
+		 * @returns {undefined}
+		 */
+		log(...data) {
+			this._formatOutput(data, console.log.bind(console));
 		}
 		/**
 		 * 警告表示
@@ -5955,15 +6009,8 @@ class Jasc {
 		 * @param {boolean} [obligation=false] - 必須表示
 		 * @returns {undefined}
 		 */
-		warn(errObj, obligation = false) {
-			if (!(this.#isDebug || (this.#isOblInd && obligation))) {
-				return;
-			}
-			if (this._prefix) {
-				console.warn(`[${this._prefix}]`, errObj);
-			} else {
-				console.warn(errObj);
-			}
+		warn(...data) {
+			this._formatOutput(data, console.warn.bind(console));
 		}
 		/**
 		 * エラー表示
@@ -5971,15 +6018,8 @@ class Jasc {
 		 * @param {boolean} [obligation=false] - 必須表示
 		 * @returns {undefined}
 		 */
-		error(errObj, obligation = false) {
-			if (!(this.#isDebug || (this.#isOblInd && obligation))) {
-				return;
-			}
-			if (this._prefix) {
-				console.error(`[${this.#prefix}]`, errObj);
-			} else {
-				console.error(errObj);
-			}
+		error(...data) {
+			this._formatOutput(data, console.error.bind(console));
 		}
 		/**
 		 * 時間計測
