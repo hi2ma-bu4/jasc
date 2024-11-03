@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.21
+// jasc.js Ver.1.14.22
 
 // Copyright (c) 2022-2024 hi2ma-bu4(snows)
 // License: LGPL-2.1 license
@@ -220,7 +220,7 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 * jasc.sendNotification(title, text, icon)								//通知送信
 - jasc.sendNotification(title, text, icon)
 *- カメラ
-* jasc.startCamera(video, width = 640, opt = { video: true, audio: false })	//カメラを起動し、映像(他stream)を取得する
+* jasc.startCamera(video, width = 640, opt = { video: { facingMode: "user" }, audio: false })	//カメラを起動し、映像(他stream)を取得する
 * Jasc.stopCamera(stream)												//カメラを止める
 - jasc.stopCamera(stream)
 * Jasc.stopStream(stream)												//Streamを全停止する
@@ -5253,7 +5253,7 @@ class Jasc {
 	 * @param {object} [opt] - オプション
 	 * @returns {Promise<HTMLVideoElement>} 映像
 	 */
-	startCamera(video, width = 640, opt = { video: true, audio: false }) {
+	startCamera(video, width = 640, opt = { video: { facingMode: "user" }, audio: false }) {
 		return new Promise((resolve, reject) => {
 			if (!navigator.mediaDevices) {
 				reject("navigator.mediaDevices is not supported");
@@ -5418,6 +5418,10 @@ class Jasc {
 	 * @static
 	 */
 	static async unregisterServiceWorker() {
+		if (!navigator.serviceWorker) {
+			reject("navigator.serviceWorker is not supported");
+			return;
+		}
 		const registrations = await navigator.serviceWorker.getRegistrations();
 		const cou = registrations.length;
 		if (cou) {
