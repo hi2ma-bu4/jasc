@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.24
+// jasc.js Ver.1.14.25
 
 // Copyright (c) 2022-2024 hi2ma-bu4(snows)
 // License: LGPL-2.1 license
@@ -5936,24 +5936,26 @@ class Jasc {
 			if (len == 0) {
 				return;
 			}
-			if (len <= 1) {
-				if (!(this.#isDebug || (this.#isOblInd && obligation))) {
-					return;
-				}
-				output(data[0]);
-				return;
-			}
 			let obligation = null;
-			if (typeof data[len - 1] === "boolean") {
-				obligation = data.pop();
-			}
-			len = data.length;
-			let type = "";
-			if (typeof data[len - 1] === "string") {
-				type = data.pop();
-			} else if (typeof obligation === "boolean") {
-				data.push(obligation);
-				obligation = null;
+			let logStyle = "";
+			if (len > 1) {
+				if (typeof data[len - 1] === "boolean") {
+					obligation = data.pop();
+				}
+				len = data.length;
+				if (typeof data[len - 1] === "string") {
+					type = data.pop();
+					if (this.style[type]) {
+						logStyle = this.style[type];
+					} else if (/:/.test(type)) {
+						logStyle = type;
+					} else {
+						data.push(type);
+					}
+				} else if (typeof obligation === "boolean") {
+					data.push(obligation);
+					obligation = null;
+				}
 			}
 
 			if (!(this.#isDebug || (this.#isOblInd && obligation))) {
@@ -5961,14 +5963,6 @@ class Jasc {
 			}
 			len = data.length;
 
-			let logStyle = "";
-			if (typeof type == "string") {
-				if (this.style[type]) {
-					logStyle = this.style[type];
-				} else {
-					logStyle = type;
-				}
-			}
 			let formatText = "%c";
 			if (this.#prefix) {
 				formatText += `[${this.#prefix}]`;
