@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.22
+// jasc.js Ver.1.14.23
 
 // Copyright (c) 2022-2024 hi2ma-bu4(snows)
 // License: LGPL-2.1 license
@@ -5414,13 +5414,13 @@ class Jasc {
 	/**
 	 * Service Workerを削除
 	 * @returns {number} 削除件数
+	 * @throws {ReferenceError} navigator.serviceWorker is not supported
 	 * @async
 	 * @static
 	 */
 	static async unregisterServiceWorker() {
 		if (!navigator.serviceWorker) {
-			reject("navigator.serviceWorker is not supported");
-			return;
+			throw new ReferenceError("navigator.serviceWorker is not supported");
 		}
 		const registrations = await navigator.serviceWorker.getRegistrations();
 		const cou = registrations.length;
