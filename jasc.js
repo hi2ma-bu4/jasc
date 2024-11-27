@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.27.1
+// jasc.js Ver.1.14.27.2
 
 // Copyright (c) 2022-2024 hi2ma-bu4(snows)
 // License: LGPL-2.1 license
@@ -6197,11 +6197,21 @@ class Jasc {
 
 		/**
 		 * 10進数を62進数に変換
-		 * @param {number} [num=0] - 10進数
+		 * @param {number | bigint} [num=0] - 10進数
 		 * @returns {string}
 		 * @static
 		 */
 		static encode(num = 0) {
+			switch (typeof num) {
+				case "string":
+				case "bigint":
+					num = Number(num);
+					break;
+				case "number":
+					break;
+				default:
+					return "";
+			}
 			if (num === 0) return this._CHARSET[0];
 			let ret = "";
 			while (num > 0) {
