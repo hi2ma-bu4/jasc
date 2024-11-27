@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.27.2
+// jasc.js Ver.1.14.27.3
 
 // Copyright (c) 2022-2024 hi2ma-bu4(snows)
 // License: LGPL-2.1 license
@@ -6194,6 +6194,19 @@ class Jasc {
 			}
 			return obj;
 		})(this);
+		/**
+		 * 変換表(BigInt版)
+		 * @type {object}
+		 * @static
+		 * @readonly
+		 */
+		static _BIGINT_CHAR_INDEX = (function (self) {
+			const obj = {};
+			for (const [key, value] of Object.entries(self._CHAR_INDEX)) {
+				obj[key] = BigInt(value);
+			}
+			return obj;
+		})(this);
 
 		/**
 		 * 10進数を62進数に変換
@@ -6204,11 +6217,12 @@ class Jasc {
 		static encode(num = 0) {
 			switch (typeof num) {
 				case "string":
-				case "bigint":
 					num = Number(num);
 					break;
 				case "number":
 					break;
+				case "bigint":
+					return this.encodeBigInt(num);
 				default:
 					return "";
 			}
@@ -6233,6 +6247,48 @@ class Jasc {
 				ret = ret * this._BASE + this._CHAR_INDEX[str[i]];
 			}
 			return ret;
+		}
+		/**
+		 * 10進数を62進数に変換(BigInt版)
+		 * @param {number | bigint} [num=0] - 10進数
+		 * @returns {string}
+		 * @static
+		 */
+		static encodeBigInt(num = 0) {
+			switch (typeof num) {
+				case "string":
+					num = BigInt(num);
+					break;
+				case "number":
+					return this.encode(num);
+				case "bigint":
+					break;
+				default:
+					return "";
+			}
+			if (num === 0n) return this._CHARSET[0];
+			const _BASE = BigInt(this._BASE);
+			let ret = "";
+			while (num > 0n) {
+				const remainder = num % _BASE;
+				ret = this._CHARSET[Number(remainder)] + ret;
+				num = num / _BASE;
+			}
+			return ret;
+		}
+		/**
+		 * 62進数を10進数に変換(BigInt版)
+		 * @param {string} str - 62進数
+		 * @returns {bigint}
+		 * @static
+		 */
+		static decodeBigInt(str) {
+			const _BASE = BigInt(this._BASE);
+			let result = 0n;
+			for (let i = 0; i < str.length; i++) {
+				result = result * _BASE + this._BIGINT_CHAR_INDEX[str[i]];
+			}
+			return result;
 		}
 	};
 	/**
