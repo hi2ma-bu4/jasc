@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.26.3
+// jasc.js Ver.1.14.27.1
 
 // Copyright (c) 2022-2024 hi2ma-bu4(snows)
 // License: LGPL-2.1 license
@@ -269,6 +269,8 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 - jasc.consoleCustomLog(arg = {})
 * new Jasc.AssetsManager(urls = {})										//画像先行読み込み管理
 - jasc.assetsManager(urls = {})
+* Jasc.Base62															//Base62変換
+- jasc.base62
 
 */
 /*
@@ -6157,6 +6159,78 @@ class Jasc {
 	assetsManager(urls = {}) {
 		return new Jasc.AssetsManager(urls);
 	}
+
+	/**
+	 * Base62変換
+	 * @memberof Jasc
+	 * @returns {Jasc.Base62}
+	 * @static
+	 */
+	static Base62 = class {
+		/**
+		 * 変換文字列
+		 * @type {string}
+		 * @static
+		 * @readonly
+		 */
+		static _CHARSET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+		/**
+		 * CHARSET文字数
+		 * @type {number}
+		 * @static
+		 * @readonly
+		 */
+		static _BASE = this._CHARSET.length;
+		/**
+		 * 変換表
+		 * @type {object}
+		 * @static
+		 * @readonly
+		 */
+		static _CHAR_INDEX = (function (self) {
+			const obj = {};
+			for (let i = 0; i < self._BASE; i++) {
+				obj[self._CHARSET[i]] = i;
+			}
+			return obj;
+		})(this);
+
+		/**
+		 * 10進数を62進数に変換
+		 * @param {number} [num=0] - 10進数
+		 * @returns {string}
+		 * @static
+		 */
+		static encode(num = 0) {
+			if (num === 0) return this._CHARSET[0];
+			let ret = "";
+			while (num > 0) {
+				const remainder = num % this._BASE;
+				ret = this._CHARSET[remainder] + ret;
+				num = (num / this._BASE) | 0;
+			}
+			return ret;
+		}
+		/**
+		 * 62進数を10進数に変換
+		 * @param {string} str - 62進数
+		 * @returns {number}
+		 * @static
+		 */
+		static decode(str) {
+			let ret = 0;
+			for (let i = 0; i < str.length; i++) {
+				ret = ret * this._BASE + this._CHAR_INDEX[str[i]];
+			}
+			return ret;
+		}
+	};
+	/**
+	 * Base62変換
+	 * @memberof Jasc
+	 * @returns {Jasc.Base62}
+	 */
+	base62 = Jasc.Base62;
 }
 
 // 初期化
