@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.28.1
+// jasc.js Ver.1.14.29.1
 
 // Copyright (c) 2022-2024 hi2ma-bu4(snows)
 // License: LGPL-2.1 license
@@ -64,8 +64,8 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 ? jasc動作関連
 * jasc.initSetting = args												//jasc初期設定(DOMContentLoaded以降変更不可)
 * jasc.setting = args													//jasc設定
-* jasc.addEventListener(eventType = "", callback, name = "", returnName = false)	//jasc内イベント設定
-* jasc.on(eventType = "", callback, name = "", returnName = false)		//jasc.addEventListenerと同じ
+* jasc.addEventListener(eventType = "", callback, name = "", { returnName = false, once = false } = {})	//jasc内イベント設定
+* jasc.on(eventType = "", callback, name = "", { returnName = false, once = false } = {})				//jasc.addEventListenerと同じ
 * jasc.removeEventListener(eventType = "", name = "")					//jasc内イベント解除
 * jasc.off(eventType = "", name = "")									//jasc.removeEventListenerと同じ
 - jasc._dispatchEvent(eventType = "", ...args)							//jasc内イベント発火[システム使用用]
@@ -2115,22 +2115,28 @@ class Jasc {
 	 * @param {string} [eventType=""] - イベントの種類
 	 * @param {function} [callback] - イベントのコールバック関数
 	 * @param {string} [name=auto] - 削除時の参照用名称
-	 * @param {boolean} [returnName=false] - 登録した名称を返すか
+	 * @param {object} [option] - オプション
+	 * @param {boolean} [option.returnName=false] - 登録した名称を返すか
+	 * @param {boolean} [option.once=false] - 一度だけ実行
 	 * @returns {-1|0|1|string|string[]} -1:イベント登録成功(即時実行) 0:イベント登録成功 1:イベント登録失敗
 	 */
-	addEventListener = function (eventType = "", callback, name = "", returnName = false) {
+	addEventListener = function (eventType = "", callback, name = "", { returnName = false, once = false } = {}) {
 		if (eventType === "type") {
 			return ["type", ...Object.keys(this.#jasc_events)];
 		}
 		if (Jasc.objHasOwnProperty(this.#jasc_events, eventType)[0]) {
 			if (callback && typeof callback == "function") {
 				const ev = this.#jasc_events[eventType];
+				const json = {
+					func: callback,
+					once,
+				};
 				if (name === "") {
-					name = Jasc.setAssociativeAutoName(ev, callback, "__jasc");
+					name = Jasc.setAssociativeAutoName(ev, json, "__jasc");
 				} else if (ev[name]) {
-					name = jasc.setAssociativeAutoName(ev, callback, name);
+					name = Jasc.setAssociativeAutoName(ev, json, name);
 				} else {
-					ev[name] = callback;
+					ev[name] = json;
 				}
 
 				// 旬を逃しても一応実行はさせる
@@ -2159,7 +2165,9 @@ class Jasc {
 	 * @param {string} [eventType=""] - イベントの種類
 	 * @param {function} [callback] - イベントのコールバック関数
 	 * @param {string} [name=auto] - 削除時の参照用名称
-	 * @param {boolean} [returnName=false] - 登録した名称を返すか
+	 * @param {object} [option] - オプション
+	 * @param {boolean} [option.returnName=false] - 登録した名称を返すか
+	 * @param {boolean} [option.once=false] - 一度だけ実行
 	 * @returns {-1|0|1|string|string[]} -1:イベント登録成功(即時実行) 0:イベント登録成功 1:イベント登録失敗
 	 */
 	on = this.addEventListener;
@@ -2184,7 +2192,7 @@ class Jasc {
 		if (Jasc.objHasOwnProperty(this.#jasc_events, eventType)[0]) {
 			if (Jasc.isAssociative(this.#jasc_events[eventType])) {
 				if (name != "") {
-					if (typeof this.#jasc_events[eventType][name] !== "function") {
+					if (typeof this.#jasc_events[eventType][name]?.func !== "function") {
 						return 2;
 					}
 					this.#jasc_events[eventType][name] = null;
@@ -2228,10 +2236,14 @@ class Jasc {
 		const e = this.#jasc_events[eventType];
 		let c = 0;
 		for (let key in e) {
-			if (typeof e[key] == "function") {
+			if (typeof e[key]?.func == "function") {
 				try {
-					e[key](...args);
+					e[key].func(...args);
 					c++;
+					if (e[key].once) {
+						e[key] = null;
+						delete e[key];
+					}
 				} catch (e) {
 					this._ccLog.error(e, true);
 				}
