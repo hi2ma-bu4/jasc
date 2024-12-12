@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.27.3
+// jasc.js Ver.1.14.28.1
 
 // Copyright (c) 2022-2024 hi2ma-bu4(snows)
 // License: LGPL-2.1 license
@@ -338,6 +338,7 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 * windowResize				//ウィンドウサイズ変更時
 * changeDOM					//DOM変更検知時
 * keyPress					//キーボード入力時(ゲームエンジン使用時動作変更)
+* onLine					//オンライン/オフライン状態変更時
 * imageLoadError			//画像読み込みエラー検知時
 * exLinkGet					//外部リンク検知時
 * exTextLinkGet				//外部テキストリンク検知時
@@ -358,22 +359,28 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 * methodOverwritePlugin		//プラグインメソッド上書き時
 
 ? 自動イベント実行順
-* jasc.on("interactive")			//※実行タイミング後設定で、動作しない
+* document.addEventListener("readystatechange") //interactiveのみ
+	* jasc.on("onLine")				//※複数実行
+	* jasc.on("imageLoadError")		//※複数実行
+	* jasc.on("interactive")		//※実行タイミング後設定で、動作しない
 * document.addEventListener("DOMContentLoaded")
 	* jasc.on("imageLoadError")		//※複数実行
 	* jasc.on("DOMContentLoaded")	//※実行タイミング後設定で、設定した瞬間(同期)実行
 	* jasc.on("exTextLinkGet")		//※複数実行
 	* jasc.on("exLinkGet")			//※複数実行
 * window.addEventListener("load")
+	* jasc.on("imageLoadError")		//※複数実行
 	* jasc.on("load")				//※実行タイミング後設定で、設定した瞬間(同期)実行
 	* jasc.on("gameInit")			//※実行タイミング後設定で、動作しない
+	* jasc.on("exTextLinkGet")		//※複数実行
+	* jasc.on("exLinkGet")			//※複数実行
 
 */
 
 // 説明書はここまで
 
 if (typeof window === "undefined") {
-	throw new Error("jasc.jsはブラウザメインスレッドで実行して下さい。\nWebWorkerにはjascWorker.jsを読み込んで下さい。");
+	throw new Error("jasc.jsはブラウザメインスレッドで実行して下さい。");
 }
 
 class Jasc {
@@ -781,6 +788,8 @@ class Jasc {
 		"DOMContentLoaded",
 		"load",
 
+		"onLine",
+
 		"keyPress",
 
 		// dom関係
@@ -830,6 +839,7 @@ class Jasc {
 
 	#jasc_readonlyData = {
 		pressKeySet: new Set(),
+		_cacheOnline: true,
 
 		// ゲッター群
 		get urlQuery() {
@@ -990,6 +1000,15 @@ class Jasc {
 		document.addEventListener("visibilitychange", function () {
 			_this.#jasc_readonlyData.pressKeySet.clear();
 		});
+		//* オンライン判定
+		window.addEventListener("online", function () {
+			// オンライン状態取得
+			_this._updateOnlineStatus();
+		});
+		window.addEventListener("offline", function () {
+			// オンライン状態取得
+			_this._updateOnlineStatus();
+		});
 		//* キー入力判定
 		window.addEventListener("keydown", function (e) {
 			// shift同時押しに弱いのでそれに対処(ゴリ押し)
@@ -1018,7 +1037,9 @@ class Jasc {
 		//* DOMContentLoadedより前に発火
 		document.addEventListener("readystatechange", function () {
 			if (document.readyState === "interactive") {
-				//画像err取得
+				// オンライン状態取得
+				_this._updateOnlineStatus();
+				// 画像err取得
 				_this.#_autoImageErrorGet();
 				// 遅延読み込み自動処理を実行
 				_this.#_autoLazyLoad();
@@ -1961,6 +1982,15 @@ class Jasc {
 			this._ccLog.log(`onLazy[${setCou}/${elemLen - skipCou}(${elemLen})]`, "data");
 		}
 	}
+
+	_updateOnlineStatus = function () {
+		const readonly = this.#jasc_readonlyData;
+		const ol = navigator.onLine;
+		if (readonly._cacheOnline != ol) {
+			readonly._cacheOnline = ol;
+			this._dispatchEvent("onLine", ol);
+		}
+	}.bind(this);
 
 	//======================
 	// 自動実行(game)
