@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.30.2
+// jasc.js Ver.1.14.30.3
 
 // Copyright (c) 2022-2024 hi2ma-bu4(snows)
 // License: LGPL-2.1 license
@@ -482,128 +482,130 @@ class Jasc {
 		[/^d0cf11e0a1b11ae1/, "xls"],
 	];
 	// 拡張子に対応するmimeタイプ
-	static #_FILETYPE_MIME_LIST = {
-		// 画像ファイル
-		bmp: ["image/bmp", "image/x-bmp", "image/x-ms-bmp"],
-		cgm: "image/cgm",
-		dicom: "application/dicom",
-		dwf: ["drawing/x-dwf", "image/vnd.dwg"],
-		eps: "application/postscript",
-		epsf: "application/postscript",
-		fif: "image/fif",
-		gif: "image/gif",
-		ico: ["image/x-icon", "image/vnd.microsoft.icon"],
-		jfi: "image/jpeg",
-		jfif: "image/jpeg",
-		jpe: "image/jpeg",
-		jpeg: "image/jpeg",
-		jpg: "image/jpeg",
-		// pgfはMIMEは存在しない
-		png: "image/png",
-		ps: "application/postscript",
-		psd: ["image/x-photoshop", "image/vnd.adobe.photoshop"],
-		svg: "image/svg+xml",
-		tif: "image/tiff",
-		tiff: "image/tiff",
-		webp: "image/webp",
-		xbm: "image/x-bitmap",
-		xpm: "image/x-xpixmap",
-		// 音声ファイル
-		aac: "audio/aac",
-		au: "audio/basic",
-		kar: ["audio/midi", "audio/x-midi"],
-		mid: ["audio/midi", "audio/x-midi"],
-		midi: ["audio/midi", "audio/x-midi"],
-		m1a: ["audio/mpeg", "audio/x-mpeg"],
-		m2a: ["audio/mpeg", "audio/x-mpeg"],
-		m4a: "audio/aac",
-		mp2: ["audio/mpeg", "audio/x-mpeg"],
-		mp3: ["audio/mpeg", "audio/x-mpeg"],
-		mpa: ["audio/mpeg", "audio/x-mpeg"],
-		mpega: ["audio/mpeg", "audio/x-mpeg"],
-		oga: "audio/ogg",
-		opus: "audio/opus",
-		ra: ["audio/x-realaudio", "audio/vnd.rn-realaudio"],
-		smf: ["audio/midi", "audio/x-midi"],
-		snd: "audio/basic",
-		ulw: "audio/basic",
-		wav: ["audio/wav", "audio/x-wav"],
-		weba: "audio/webm",
-		// 動画ファイル
-		"3gp": ["audio/3gpp", "video/3gpp"],
-		"3g2": ["audio/3gpp2", "video/3gpp2"],
-		asf: "video/x-ms-asf",
-		avi: "video/x-msvideo",
-		m1s: ["video/mpeg", "video/x-mpeg"],
-		m1v: ["video/mpeg", "video/x-mpeg"],
-		m2s: ["video/mpeg", "video/x-mpeg"],
-		m2v: ["video/mpeg", "video/x-mpeg"],
-		mkv: "video/x-matroska",
-		mov: "video/quicktime",
-		moov: "video/quicktime",
-		mp4: "video/mp4",
-		mpe: ["video/mpeg", "video/x-mpeg"],
-		mpeg: ["video/mpeg", "video/x-mpeg"],
-		mpg: ["video/mpeg", "video/x-mpeg"],
-		mpg4: "video/mp4",
-		mpv: ["video/mpeg", "video/x-mpeg"],
-		ogv: "video/ogg",
-		ogg: ["audio/ogg", "video/ogg"],
-		qt: "video/quicktime",
-		vdo: "video/vdo",
-		viv: "video/vnd.vivo",
-		vivo: "video/vnd.vivo",
-		webm: "video/webm",
-		wmv: "video/x-ms-wmv",
-		// 圧縮(アーカイブ)
-		"7z": "application/x-7z-compressed",
-		bz: "application/x-bzip",
-		bz2: "application/x-bzip2",
-		gz: ["application/gzip", "application/x-gzip"],
-		rar: ["application/vnd.rar", "application/x-rar-compressed", "application/x-rar"],
-		tar: "application/x-tar",
-		wim: "application/x-ms-wim",
-		xz: "application/x-xz",
-		zip: "application/zip",
-		// フォントファイル
-		eot: "application/vnd.ms-fontobject",
-		otf: "font/otf",
-		ttf: "font/ttf",
-		woff: "font/woff",
-		woff2: "font/woff2",
-		// プログラムファイル
-		cgi: "application/x-httpd-cgi",
-		css: "text/css",
-		csv: "text/csv",
-		exe: ["application/exe", "application/x-msdownload"],
-		htm: "text/html",
-		html: "text/html",
-		jar: "application/java-archive",
-		js: "text/javascript",
-		json: "application/json",
-		mjs: "text/javascript",
-		php: ["application/x-httpd-php", "text/x-php"],
-		pl: "text/x-perl",
-		swf: "application/x-shockwave-flash",
-		tsv: "text/tab-separated-values",
-		txt: "text/plain",
-		vbs: "text/vbscript",
-		vdb: "application/activexdocment",
-		xhtml: "application/xhtml+xml",
-		xml: ["application/xml", "text/xml"],
-		// その他
-		azw: "application/vnd.amazon.ebook",
-		doc: ["application/msword", "application/vnd.ms-word"],
-		docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-		elf: "application/x-elf",
-		ogx: "application/ogg",
-		pdf: "application/pdf",
-		ppt: ["application/mspowerpoint", "application/vnd.ms-powerpoint", "application/ppt"],
-		pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-		rtf: "application/rtf",
-		xls: ["application/msexcel", "application/vnd.ms-excel"],
-		xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-	};
+	static #_FILETYPE_MIME_MAP = new Map(
+		Object.entries({
+			// 画像ファイル
+			bmp: ["image/bmp", "image/x-bmp", "image/x-ms-bmp"],
+			cgm: "image/cgm",
+			dicom: "application/dicom",
+			dwf: ["drawing/x-dwf", "image/vnd.dwg"],
+			eps: "application/postscript",
+			epsf: "application/postscript",
+			fif: "image/fif",
+			gif: "image/gif",
+			ico: ["image/x-icon", "image/vnd.microsoft.icon"],
+			jfi: "image/jpeg",
+			jfif: "image/jpeg",
+			jpe: "image/jpeg",
+			jpeg: "image/jpeg",
+			jpg: "image/jpeg",
+			// pgfはMIMEは存在しない
+			png: "image/png",
+			ps: "application/postscript",
+			psd: ["image/x-photoshop", "image/vnd.adobe.photoshop"],
+			svg: "image/svg+xml",
+			tif: "image/tiff",
+			tiff: "image/tiff",
+			webp: "image/webp",
+			xbm: "image/x-bitmap",
+			xpm: "image/x-xpixmap",
+			// 音声ファイル
+			aac: "audio/aac",
+			au: "audio/basic",
+			kar: ["audio/midi", "audio/x-midi"],
+			mid: ["audio/midi", "audio/x-midi"],
+			midi: ["audio/midi", "audio/x-midi"],
+			m1a: ["audio/mpeg", "audio/x-mpeg"],
+			m2a: ["audio/mpeg", "audio/x-mpeg"],
+			m4a: "audio/aac",
+			mp2: ["audio/mpeg", "audio/x-mpeg"],
+			mp3: ["audio/mpeg", "audio/x-mpeg"],
+			mpa: ["audio/mpeg", "audio/x-mpeg"],
+			mpega: ["audio/mpeg", "audio/x-mpeg"],
+			oga: "audio/ogg",
+			opus: "audio/opus",
+			ra: ["audio/x-realaudio", "audio/vnd.rn-realaudio"],
+			smf: ["audio/midi", "audio/x-midi"],
+			snd: "audio/basic",
+			ulw: "audio/basic",
+			wav: ["audio/wav", "audio/x-wav"],
+			weba: "audio/webm",
+			// 動画ファイル
+			"3gp": ["audio/3gpp", "video/3gpp"],
+			"3g2": ["audio/3gpp2", "video/3gpp2"],
+			asf: "video/x-ms-asf",
+			avi: "video/x-msvideo",
+			m1s: ["video/mpeg", "video/x-mpeg"],
+			m1v: ["video/mpeg", "video/x-mpeg"],
+			m2s: ["video/mpeg", "video/x-mpeg"],
+			m2v: ["video/mpeg", "video/x-mpeg"],
+			mkv: "video/x-matroska",
+			mov: "video/quicktime",
+			moov: "video/quicktime",
+			mp4: "video/mp4",
+			mpe: ["video/mpeg", "video/x-mpeg"],
+			mpeg: ["video/mpeg", "video/x-mpeg"],
+			mpg: ["video/mpeg", "video/x-mpeg"],
+			mpg4: "video/mp4",
+			mpv: ["video/mpeg", "video/x-mpeg"],
+			ogv: "video/ogg",
+			ogg: ["audio/ogg", "video/ogg"],
+			qt: "video/quicktime",
+			vdo: "video/vdo",
+			viv: "video/vnd.vivo",
+			vivo: "video/vnd.vivo",
+			webm: "video/webm",
+			wmv: "video/x-ms-wmv",
+			// 圧縮(アーカイブ)
+			"7z": "application/x-7z-compressed",
+			bz: "application/x-bzip",
+			bz2: "application/x-bzip2",
+			gz: ["application/gzip", "application/x-gzip"],
+			rar: ["application/vnd.rar", "application/x-rar-compressed", "application/x-rar"],
+			tar: "application/x-tar",
+			wim: "application/x-ms-wim",
+			xz: "application/x-xz",
+			zip: "application/zip",
+			// フォントファイル
+			eot: "application/vnd.ms-fontobject",
+			otf: "font/otf",
+			ttf: "font/ttf",
+			woff: "font/woff",
+			woff2: "font/woff2",
+			// プログラムファイル
+			cgi: "application/x-httpd-cgi",
+			css: "text/css",
+			csv: "text/csv",
+			exe: ["application/exe", "application/x-msdownload"],
+			htm: "text/html",
+			html: "text/html",
+			jar: "application/java-archive",
+			js: "text/javascript",
+			json: "application/json",
+			mjs: "text/javascript",
+			php: ["application/x-httpd-php", "text/x-php"],
+			pl: "text/x-perl",
+			swf: "application/x-shockwave-flash",
+			tsv: "text/tab-separated-values",
+			txt: "text/plain",
+			vbs: "text/vbscript",
+			vdb: "application/activexdocment",
+			xhtml: "application/xhtml+xml",
+			xml: ["application/xml", "text/xml"],
+			// その他
+			azw: "application/vnd.amazon.ebook",
+			doc: ["application/msword", "application/vnd.ms-word"],
+			docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+			elf: "application/x-elf",
+			ogx: "application/ogg",
+			pdf: "application/pdf",
+			ppt: ["application/mspowerpoint", "application/vnd.ms-powerpoint", "application/ppt"],
+			pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+			rtf: "application/rtf",
+			xls: ["application/msexcel", "application/vnd.ms-excel"],
+			xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+		})
+	);
 
 	//##################################################
 	// 内部使用プライベート変数
@@ -861,7 +863,7 @@ class Jasc {
 
 	#jasc_sysListData = {
 		fileTypeReg: Jasc.#_FILETYPE_REG_LIST,
-		fileTypeMime: Jasc.#_FILETYPE_MIME_LIST,
+		fileTypeMime: Jasc.#_FILETYPE_MIME_MAP,
 	};
 
 	// LazyLoad用
@@ -5116,7 +5118,7 @@ class Jasc {
 	 */
 	static getMimeType(ext) {
 		ext = ext.toString().toLowerCase();
-		let lst = Jasc.#_FILETYPE_MIME_LIST[ext] ?? "application/octet-stream";
+		let lst = Jasc.#_FILETYPE_MIME_MAP.get(ext) ?? "application/octet-stream";
 		if (!Array.isArray(lst)) {
 			return [lst];
 		}
@@ -6459,9 +6461,9 @@ class Jasc {
 		 * @readonly
 		 */
 		static _CHAR_INDEX = (function (self) {
-			const obj = {};
+			const obj = new Map();
 			for (let i = 0; i < self._BASE; i++) {
-				obj[self._CHARSET[i]] = i;
+				obj.set(self._CHARSET[i], i);
 			}
 			return obj;
 		})(this);
@@ -6472,9 +6474,9 @@ class Jasc {
 		 * @readonly
 		 */
 		static _BIGINT_CHAR_INDEX = (function (self) {
-			const obj = {};
-			for (const [key, value] of Object.entries(self._CHAR_INDEX)) {
-				obj[key] = BigInt(value);
+			const obj = new Map();
+			for (const [key, value] of self._CHAR_INDEX.entries()) {
+				obj.set(key, BigInt(value));
 			}
 			return obj;
 		})(this);
@@ -6515,7 +6517,7 @@ class Jasc {
 		static decode(str) {
 			let ret = 0;
 			for (let i = 0; i < str.length; i++) {
-				ret = ret * this._BASE + this._CHAR_INDEX[str[i]];
+				ret = ret * this._BASE + this._CHAR_INDEX.get(str[i]);
 			}
 			return ret;
 		}
@@ -6557,7 +6559,7 @@ class Jasc {
 			const _BASE = BigInt(this._BASE);
 			let result = 0n;
 			for (let i = 0; i < str.length; i++) {
-				result = result * _BASE + this._BIGINT_CHAR_INDEX[str[i]];
+				result = result * _BASE + this._BIGINT_CHAR_INDEX.get(str[i]);
 			}
 			return result;
 		}
