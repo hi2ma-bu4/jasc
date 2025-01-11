@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.29.1
+// jasc.js Ver.1.14.30.1
 
 // Copyright (c) 2022-2024 hi2ma-bu4(snows)
 // License: LGPL-2.1 license
@@ -226,6 +226,16 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 * Jasc.stopStream(stream)												//Streamを全停止する
 - jasc.stopStream(stream)
 * jasc.takePicture(video, outType = "file")								//映像の現在のフレームを取得する
+*- バイブレーション
+* Jasc.playVibrate(duration = 0)										//バイブレーションを実行させる
+- jasc.playVibrate(duration = 0)
+* jasc.setVibrateInterval(duration, wait = 100)							//バイブレーション動作をループさせる
+* jasc.clearVibrateInterval()											//ループしているバイブレーション動作を停止させる
+*- 合成音声
+* Jasc.getVoiceNameList(lang = null)									//合成音声の種類を取得する
+- jasc.getVoiceNameList(lang = null)
+* Jasc.playSpeech(text = "", opt = {})									//合成音声を再生する
+- jasc.playSpeech(text = "", opt = {})
 *- Worker
 * Jasc.unregisterServiceWorker()										//ServiceWorkerの登録解除
 - jasc.unregisterServiceWorker()
@@ -875,6 +885,9 @@ class Jasc {
 	#_activeCanvasName = null;
 	#_activeCanvas = null;
 	#_activeCtx = null;
+
+	// バイブレーション用
+	_vibrateIntervalId = null;
 
 	// textNode判定用
 	_textNode_allowedTextTag = ["SPAN", "P"];
@@ -5450,6 +5463,202 @@ class Jasc {
 			}
 		});
 	}
+
+	//======================
+	// バイブレーション
+	//======================
+
+	/**
+	 * バイブレーションを実行させる
+	 * @param {number|number[]} duration - ミリ秒
+	 * @returns {boolean} 実行結果
+	 * @static
+	 */
+	static playVibrate(duration = 0) {
+		return navigator.vibrate(duration);
+	}
+	/**
+	 * バイブレーションを実行させる
+	 * @param {number|number[]} duration - ミリ秒
+	 * @returns {boolean} 実行結果
+	 */
+	playVibrate = Jasc.playVibrate;
+
+	/**
+	 * バイブレーション動作をループさせる
+	 * @param {number|number[]} duration - ミリ秒
+	 * @param {number} [wait=100] - 待機時間
+	 * @returns {undefined}
+	 */
+	setVibrateInterval(duration, wait = 100) {
+		let loopTime = 0;
+		if (Array.isArray(duration)) {
+			loopTime = this.sum(duration) + wait;
+		} else {
+			loopTime = duration + wait;
+		}
+		this.clearVibrateInterval();
+
+		this.vibrateInterval = setInterval(() => {
+			this.playVibrate(duration);
+		}, loopTime);
+	}
+	/**
+	 * ループしているバイブレーション動作を停止させる
+	 * @returns {boolean} 停止結果
+	 */
+	clearVibrateInterval() {
+		if (this.vibrateInterval != null) {
+			clearInterval(this.vibrateInterval);
+			this.vibrateInterval = null;
+			return true;
+		}
+		return false;
+	}
+
+	//======================
+	// 合成音声
+	//======================
+
+	/**
+	 * 合成音声の種類を取得する
+	 * @param {string} [lang=null] - 言語(特定言語抽出機能)
+	 * @returns {Promise<{lang: string, name: string}[]>} 合成音声の種類
+	 * @static
+	 */
+	static getVoiceNameList(lang = null) {
+		return new Promise((resolve, reject) => {
+			const synth = window.speechSynthesis;
+			if (!synth) {
+				reject(new ReferenceError("speechSynthesis is not supported"));
+				return;
+			}
+
+			let cou = 0;
+			function _play() {
+				cou++;
+				const voices = synth.getVoices();
+				if (voices.length <= 0) {
+					if (cou > 5) {
+						reject(new Error("speechSynthesis voice not found"));
+						return;
+					}
+					setTimeout(_play, 100);
+					return;
+				}
+				const voiceNameList = [];
+				for (let i = 0; i < voices.length; i++) {
+					if (lang && voices[i].lang !== lang) {
+						continue;
+					}
+					voiceNameList.push({
+						lang: voices[i].lang,
+						name: voices[i].name,
+					});
+				}
+				resolve(voiceNameList);
+			}
+			_play();
+		});
+	}
+	/**
+	 * 合成音声の種類を取得する
+	 * @param {string} [lang=null] - 言語(特定言語抽出機能)
+	 * @returns {Promise<{lang: string, name: string}[]>} 合成音声の種類
+	 */
+	getVoiceNameList = Jasc.getVoiceNameList;
+
+	/**
+	 * 合成音声を取得する
+	 * @param {string} text - テキスト
+	 * @param {object} [opt] - オプション
+	 * @param {string} [opt.lang="ja-JP"] - 言語
+	 * @param {string} [opt.voiceName=null] - 音声名(部分一致許容)
+	 * @param {number} [opt.volume=1] - 音量(0~1)
+	 * @param {number} [opt.pitch=1] - 音程(0~2)
+	 * @param {number} [opt.rate=1] - 音速(0.1~10)
+	 * @param {boolean} [opt.addQueue=true] - 再生キューに追加
+	 * @param {boolean} [opt.obligation=false] - 上書き再生
+	 * @param {number} [opt.tryCount=5] - 再生試行回数
+	 * @param {function(number):undefined} [opt.tryCallback=null] - 試行コールバック
+	 * @returns {SpeechSynthesisVoice | false | null} 合成音声
+	 * @static
+	 */
+	static playSpeech(text = "", { lang = "ja-JP", voiceName = null, volume = 1, pitch = 1, rate = 1, addQueue = true, obligation = false, tryCount = 5, tryCallback = null } = {}) {
+		return new Promise((resolve, reject) => {
+			const synth = window.speechSynthesis;
+			if (!synth) {
+				reject(new ReferenceError("speechSynthesis is not supported"));
+				return;
+			}
+
+			let cou = 0;
+			function _play() {
+				cou++;
+				const voices = synth.getVoices();
+				let voice = null;
+				for (let i = 0; i < voices.length; i++) {
+					if (voices[i].lang === lang) {
+						if (voiceName) {
+							if (voices[i].name.indexOf(voiceName) === -1) {
+								continue;
+							}
+						}
+						voice = voices[i];
+						break;
+					}
+				}
+				if (!voice) {
+					if (text === "") {
+						resolve(null);
+						return;
+					}
+					if (cou > tryCount) {
+						reject(new Error("speechSynthesis voice not found"));
+						return;
+					}
+					tryCallback?.(cou);
+					setTimeout(_play, 100);
+					return;
+				}
+				const utterThis = new SpeechSynthesisUtterance(text);
+				utterThis.voice = voice;
+				utterThis.volume = volume;
+				utterThis.pitch = pitch;
+				utterThis.rate = rate;
+				utterThis.addEventListener("end", () => {
+					resolve(utterThis);
+				});
+
+				if (obligation) {
+					synth.cancel();
+				}
+
+				if (synth.speaking && !addQueue) {
+					reject(new Error("speechSynthesis.speaking"));
+					return;
+				}
+				synth.speak(utterThis);
+			}
+			_play();
+		});
+	}
+	/**
+	 * 合成音声を取得する
+	 * @param {string} text - テキスト
+	 * @param {object} [opt] - オプション
+	 * @param {string} [opt.lang="ja-JP"] - 言語
+	 * @param {string} [opt.voiceName=null] - 音声名(部分一致許容)
+	 * @param {number} [opt.volume=1] - 音量(0~1)
+	 * @param {number} [opt.pitch=1] - 音程(0~2)
+	 * @param {number} [opt.rate=1] - 音速(0.1~10)
+	 * @param {boolean} [opt.addQueue=true] - 再生キューに追加
+	 * @param {boolean} [opt.obligation=false] - 上書き再生
+	 * @param {number} [opt.tryCount=5] - 再生試行回数
+	 * @param {function(number):undefined} [opt.tryCallback=null] - 試行コールバック
+	 * @returns {SpeechSynthesisVoice | false | null} 合成音声
+	 */
+	playSpeech = Jasc.playSpeech;
 
 	//======================
 	// Worker
