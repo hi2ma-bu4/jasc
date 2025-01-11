@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.30.1
+// jasc.js Ver.1.14.30.2
 
 // Copyright (c) 2022-2024 hi2ma-bu4(snows)
 // License: LGPL-2.1 license
@@ -217,8 +217,8 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 *- 通知
 * Jasc.allowNotification()												//通知許可 判定&取得
 - jasc.allowNotification()
-* jasc.sendNotification(title, text, icon)								//通知送信
-- jasc.sendNotification(title, text, icon)
+* jasc.sendNotification(title, text, opt)								//通知送信
+- jasc.sendNotification(title, text, opt)
 *- カメラ
 * jasc.startCamera(video, width = 640, opt = { video: { facingMode: "user" }, audio: false })	//カメラを起動し、映像(他stream)を取得する
 * Jasc.stopCamera(stream)												//カメラを止める
@@ -236,6 +236,8 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 - jasc.getVoiceNameList(lang = null)
 * Jasc.playSpeech(text = "", opt = {})									//合成音声を再生する
 - jasc.playSpeech(text = "", opt = {})
+* Jasc.cancelSpeech()													//合成音声の再生をキャンセルする
+- jasc.cancelSpeech()
 *- Worker
 * Jasc.unregisterServiceWorker()										//ServiceWorkerの登録解除
 - jasc.unregisterServiceWorker()
@@ -2634,10 +2636,11 @@ class Jasc {
 	 * css変数取得&書き換え
 	 * @param {string} name - css変数名
 	 * @param {string} [val] - css変数値
+	 * @param {HTMLElement} [setDom=document.documentElement] - jQuery非対応版
 	 * @returns {string|false} css変数値
 	 * @static
 	 */
-	static cssVariableIO(name, val) {
+	static cssVariableIO(name, val, setDom = document.documentElement) {
 		if (typeof name == "string") {
 			//先頭が--の場合削除
 			if (name.slice(0, 2) != "--") {
@@ -2645,10 +2648,10 @@ class Jasc {
 			}
 			if (val != null) {
 				//上書き
-				document.documentElement.style.setProperty(name, val);
+				setDom.style.setProperty(name, val);
 			} else {
 				//読み込み
-				return getComputedStyle(document.documentElement).getPropertyValue(name);
+				return getComputedStyle(setDom).getPropertyValue(name);
 			}
 		}
 		return false;
@@ -5569,7 +5572,7 @@ class Jasc {
 	getVoiceNameList = Jasc.getVoiceNameList;
 
 	/**
-	 * 合成音声を取得する
+	 * 合成音声を再生する
 	 * @param {string} text - テキスト
 	 * @param {object} [opt] - オプション
 	 * @param {string} [opt.lang="ja-JP"] - 言語
@@ -5644,7 +5647,7 @@ class Jasc {
 		});
 	}
 	/**
-	 * 合成音声を取得する
+	 * 合成音声を再生する
 	 * @param {string} text - テキスト
 	 * @param {object} [opt] - オプション
 	 * @param {string} [opt.lang="ja-JP"] - 言語
@@ -5659,6 +5662,23 @@ class Jasc {
 	 * @returns {SpeechSynthesisVoice | false | null} 合成音声
 	 */
 	playSpeech = Jasc.playSpeech;
+
+	/**
+	 * 合成音声の再生をキャンセルする
+	 * @returns {undefined}
+	 * @static
+	 */
+	static cancelSpeech() {
+		const synth = window.speechSynthesis;
+		if (synth) {
+			synth.cancel();
+		}
+	}
+	/**
+	 * 合成音声の再生をキャンセルする
+	 * @returns {undefined}
+	 */
+	cancelSpeech = Jasc.cancelSpeech;
 
 	//======================
 	// Worker
