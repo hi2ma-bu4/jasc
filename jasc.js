@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.30.3
+// jasc.js Ver.1.14.30.4
 
 // Copyright (c) 2022-2024 hi2ma-bu4(snows)
 // License: LGPL-2.1 license
@@ -236,6 +236,10 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 - jasc.getVoiceNameList(lang = null)
 * Jasc.playSpeech(text = "", opt = {})									//合成音声を再生する
 - jasc.playSpeech(text = "", opt = {})
+* Jasc.pauseSpeech()													//合成音声の再生を一時停止する
+- jasc.pauseSpeech()
+* Jasc.resumeSpeech()													//合成音声の一時停止を再開する
+- jasc.resumeSpeech()
 * Jasc.cancelSpeech()													//合成音声の再生をキャンセルする
 - jasc.cancelSpeech()
 *- Worker
@@ -5666,6 +5670,44 @@ class Jasc {
 	playSpeech = Jasc.playSpeech;
 
 	/**
+	 * 合成音声の再生を一時停止する
+	 * @returns {boolean}
+	 * @static
+	 */
+	static pauseSpeech() {
+		const synth = window.speechSynthesis;
+		if (synth) {
+			synth.pause();
+			return true;
+		}
+		return false;
+	}
+	/**
+	 * 合成音声の再生を一時停止する
+	 * @returns {boolean}
+	 */
+	pauseSpeech = Jasc.pauseSpeech;
+
+	/**
+	 * 合成音声の一時停止を再開する
+	 * @returns {boolean}
+	 * @static
+	 */
+	static resumeSpeech() {
+		const synth = window.speechSynthesis;
+		if (synth) {
+			synth.resume();
+			return true;
+		}
+		return false;
+	}
+	/**
+	 * 合成音声の一時停止を再開する
+	 * @returns {boolean}
+	 */
+	resumeSpeech = Jasc.resumeSpeech;
+
+	/**
 	 * 合成音声の再生をキャンセルする
 	 * @returns {undefined}
 	 * @static
@@ -5674,7 +5716,9 @@ class Jasc {
 		const synth = window.speechSynthesis;
 		if (synth) {
 			synth.cancel();
+			return true;
 		}
+		return false;
 	}
 	/**
 	 * 合成音声の再生をキャンセルする
