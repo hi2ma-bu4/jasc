@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.30.4
+// jasc.js Ver.1.14.31.1
 
 // Copyright (c) 2022-2024 hi2ma-bu4(snows)
 // License: LGPL-2.1 license
@@ -57,6 +57,7 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 *- .jascExTextLink		: 外部リンク(文字に対してのリンクのみ)(cssで処理する用)
 *+ .jascLazy			: [ユーザー付与]遅延読み込み指定用
 *- .jascLazyGetter		: 遅延読み込み時巡回確認用
+*- .jascPipMarker		: PiPマーカー用(cssで処理する用)
 
 */
 
@@ -226,6 +227,9 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 * Jasc.stopStream(stream)												//Streamを全停止する
 - jasc.stopStream(stream)
 * jasc.takePicture(video, outType = "file")								//映像の現在のフレームを取得する
+*- 位置情報
+* Jasc.getCurrentPosition()												//位置情報を取得する
+- jasc.getCurrentPosition()
 *- バイブレーション
 * Jasc.playVibrate(duration = 0)										//バイブレーションを実行させる
 - jasc.playVibrate(duration = 0)
@@ -245,6 +249,10 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 *- Worker
 * Jasc.unregisterServiceWorker()										//ServiceWorkerの登録解除
 - jasc.unregisterServiceWorker()
+*- 外部window関連
+* jasc.openWindow(url = null, opt = {})									//新規windowを開く
+* jasc.animationMoveWindow(windowObj, opt = {})							//windowを滑らかに移動させる
+* jasc.openPipWindow(elem, opt = {})									//PiPを開く
 *- class同士の演算補助
 * Jasc.customOperator(obj, op = "+")									//class同士の演算補助
 - jasc.customOperator(obj, op = "+")
@@ -2511,7 +2519,7 @@ class Jasc {
 
 	/**
 	 * DOM取得
-	 * @param {string} [str] - 取得対象
+	 * @param {string|jQuery|HTMLElement} [str] - 取得対象
 	 * @param {Window|Document|jQuery|HTMLElement} [par=document] - 取得対象の親
 	 * @returns {Window|Document|HTMLElement|HTMLElement[]}
 	 */
@@ -2919,7 +2927,7 @@ class Jasc {
 	 * イベントリスナー拡張
 	 * @param {string} [eventType=""] - イベントタイプ
 	 * @param {function} [callback] - イベントのコールバック関数
-	 * @param {jQuery|HTMLElement} elem - 対象
+	 * @param {jQuery|HTMLElement|string} elem - 対象
 	 * @param {string} [name] - 削除時の参照用名称
 	 * @param {boolean} [returnName=false] - 登録した名称を返すか
 	 * @returns {0|1|string|string[]} 登録した名称またはエラーコード
@@ -5474,6 +5482,44 @@ class Jasc {
 	}
 
 	//======================
+	// 位置情報
+	//======================
+
+	/**
+	 * 位置情報を取得する
+	 * @param {Object} [opt={}] - オプション
+	 * @param {number} [opt.maximumAge=0] - キャッシュ時間
+	 * @param {number} [opt.timeout=Infinity] - タイムアウト
+	 * @param {boolean} [opt.enableHighAccuracy=false] - 高精度で返却
+	 * @returns {Promise<Position>} 位置情報
+	 * @throws {Error} geolocation is not supported
+	 * @static
+	 */
+	static getCurrentPosition({ maximumAge = 0, timeout = Infinity, enableHighAccuracy = false } = {}) {
+		return new Promise((resolve, reject) => {
+			if (!navigator.geolocation) {
+				reject(new Error("geolocation is not supported"));
+				return;
+			}
+			navigator.geolocation.getCurrentPosition(resolve, reject, {
+				maximumAge,
+				timeout,
+				enableHighAccuracy,
+			});
+		});
+	}
+	/**
+	 * 位置情報を取得する
+	 * @param {Object} [opt={}] - オプション
+	 * @param {number} [opt.maximumAge=0] - キャッシュ時間
+	 * @param {number} [opt.timeout=Infinity] - タイムアウト
+	 * @param {boolean} [opt.enableHighAccuracy=false] - 高精度で返却
+	 * @returns {Promise<Position>} 位置情報
+	 * @throws {Error} geolocation is not supported
+	 */
+	getCurrentPosition = Jasc.getCurrentPosition;
+
+	//======================
 	// バイブレーション
 	//======================
 
@@ -5762,6 +5808,247 @@ class Jasc {
 	 * @async
 	 */
 	unregisterServiceWorker = Jasc.unregisterServiceWorker;
+
+	//======================
+	// 外部window関連
+	//======================
+
+	/**
+	 * 新規windowを開く
+	 * @param {string} [url] - URL
+	 * @param {object} [opt] - オプション
+	 * @param {"_blank"|"_top"|"_self"|"_parent"} [opt.target="_blank"] - ターゲット
+	 * @param {boolean} [opt.popup=true] - ポップアップ
+	 * @param {number} [opt.width] - 横幅
+	 * @param {number} [opt.height] - 高さ
+	 * @param {number} [opt.left] - 左(画面上のwindowの位置)
+	 * @param {number} [opt.top] - 上(画面上のwindowの位置)
+	 * @param {boolean} [opt.noopener=false] - noopener(元ウィンドウアクセスブロック)
+	 * @param {boolean} [opt.noreferrer=false] - noreferrer
+	 * @param {boolean} [opt.menubar=false] - メニューバー(非推奨)
+	 * @param {boolean} [opt.toolbar=true] - ツールバー(非推奨)
+	 */
+	openWindow(url = null, { target = "_blank", popup = true, width = null, height = null, left = null, top = null, noopener = false, noreferrer = false, menubar = false, toolbar = true } = {}) {
+		if (url == null) {
+			url = location.href;
+		}
+
+		const opt = [];
+		if (popup) opt.push("popup");
+		if (width) opt.push(`width=${width},innerWidth=${width}`);
+		if (height) opt.push(`height=${height},innerHeight=${height}`);
+		if (left) opt.push(`left=${left},screenX=${left}`);
+		if (top) opt.push(`top=${top},screenY=${top}`);
+		if (noreferrer) {
+			opt.push("noreferrer,noopener");
+		} else if (noopener) opt.push("noopener");
+
+		opt.push(`menubar=${menubar ? "yes" : "no"}`);
+		opt.push(`toolbar=${toolbar ? "yes" : "no"}`);
+
+		return window.open(url, target, opt.join(","));
+	}
+
+	/**
+	 * windowを滑らかに移動させる
+	 * @param {Window} windowObj - ウィンドウオブジェクト
+	 * @param {object} [opt] - オプション
+	 * @param {number} [opt.widthStart] - 開始時の横幅
+	 * @param {number} [opt.widthEnd] - 終了時の横幅
+	 * @param {number} [opt.heightStart] - 開始時の高さ
+	 * @param {number} [opt.heightEnd] - 終了時の高さ
+	 * @param {number} [opt.leftStart] - 開始時の左(画面上のwindowの位置)
+	 * @param {number} [opt.leftEnd] - 終了時の左(画面上のwindowの位置)
+	 * @param {number} [opt.topStart] - 開始時の上(画面上のwindowの位置)
+	 * @param {number} [opt.topEnd] - 終了時の上(画面上のwindowの位置)
+	 * @param {number} [opt.duration=600] - フレーム数
+	 * @param {"smooth"|"leap"} [opt.type="smooth"] - アニメーションタイプ
+	 * @param {"requestAnimationFrame"|number} [opt.wait="requestAnimationFrame"] - 待ち時間
+	 * @returns {Promise<{width:number,height:number,left:number,top:number}>} - 終了時の位置情報
+	 */
+	animationMoveWindow(windowObj, { widthStart = null, widthEnd = null, heightStart = null, heightEnd = null, leftStart = null, leftEnd = null, topStart = null, topEnd = null, duration = 600, type = "smooth", wait = "requestAnimationFrame" } = {}) {
+		const this_ = this;
+		return new Promise((resolve, reject) => {
+			let loopFunc;
+			if (wait === "requestAnimationFrame") {
+				loopFunc = () => requestAnimationFrame(loop);
+			} else if (typeof wait === "number") {
+				loopFunc = () => setTimeout(loop, wait);
+			} else {
+				reject(new Error("Invalid wait"));
+			}
+
+			let typeFunc;
+			switch (type) {
+				case "smooth":
+					typeFunc = this_.animationSmoothDamp.bind(this_);
+					break;
+				case "leap":
+					typeFunc = this_.animationLeap.bind(this_);
+					break;
+				default:
+					reject(new Error("Invalid animation type"));
+			}
+
+			if (widthStart == null) widthStart = windowObj.innerWidth;
+			if (heightStart == null) heightStart = windowObj.innerHeight;
+			if (leftStart == null) leftStart = windowObj.screenLeft;
+			if (topStart == null) topStart = windowObj.screenTop;
+
+			let w, h, l, t;
+			if (widthEnd == null) {
+				w = () => widthStart;
+			} else {
+				w = (t) => typeFunc(widthStart, widthEnd, t);
+			}
+			if (heightEnd == null) {
+				h = () => heightStart;
+			} else {
+				h = (t) => typeFunc(heightStart, heightEnd, t);
+			}
+			if (leftEnd == null) {
+				l = () => leftStart;
+			} else {
+				l = (t) => typeFunc(leftStart, leftEnd, t);
+			}
+			if (topEnd == null) {
+				t = () => topStart;
+			} else {
+				t = (t) => typeFunc(topStart, topEnd, t);
+			}
+
+			let time = 0;
+			function loop() {
+				if (time >= duration) {
+					resolve({
+						width: w(1),
+						height: h(1),
+						left: l(1),
+						top: t(1),
+					});
+					return;
+				} else if (windowObj.closed) {
+					reject(new Error("Window closed"));
+					return;
+				}
+				const tt = time / duration;
+
+				const left = l(tt);
+				const top = t(tt);
+				const width = w(tt);
+				const height = h(tt);
+
+				windowObj.moveTo(left, top);
+				windowObj.resizeTo(width, height);
+
+				time++;
+				loopFunc();
+			}
+			loop();
+		});
+	}
+
+	/**
+	 * PiPを開く
+	 * @param {string|jQuery|HTMLElement} elem - 要素
+	 * @param {object} [opt] - オプション
+	 * @param {number} [opt.width] - 横幅
+	 * @param {number} [opt.height] - 縦幅
+	 * @param {boolean} [opt.preferInitialWindowPlacement=false] - 初期ウィンドウ配置を優先
+	 * @param {boolean} [opt.disallowReturnToOpener=false] - UIコントロールを表示しない
+	 * @param {boolean} [opt.copyStyleSheets=true] - CSSをPiPにコピー
+	 * @param {boolean} [opt.autoUnload=true] - 自動解除
+	 * @param {string} [opt.markerText] - マーカーのテキスト
+	 * @param {boolean} [opt.setJasc=true] - JascをPiPに自動設定
+	 * @returns {Promise<Window | null>} PiPウィンドウ
+	 * @async
+	 */
+	async openPipWindow(elem, { width = null, height = null, preferInitialWindowPlacement = false, disallowReturnToOpener = false, copyStyleSheets = true, autoUnload = true, markerText = null, setJasc = true } = {}) {
+		if (typeof documentPictureInPicture === "undefined") {
+			throw new ReferenceError("documentPictureInPicture is not supported");
+		}
+		if (documentPictureInPicture.window !== null) {
+			throw new Error("PiP is already open");
+		}
+		let player;
+		if (typeof elem === "string") {
+			player = this.acq(elem);
+			if (Array.isArray(player)) {
+				player = player[0];
+			}
+		}
+		if (player == null) {
+			return null;
+		}
+		player = this.jQueryObjToDOM(player);
+
+		const pipWindow = await documentPictureInPicture.requestWindow({
+			disallowReturnToOpener,
+			preferInitialWindowPlacement,
+			width: width ?? elem.clientWidth,
+			height: height ?? elem.clientHeight,
+		});
+
+		if (autoUnload) {
+			const marker = document.createElement("span");
+			marker.classList.add("jascPipMarker");
+			if (markerText != null) {
+				marker.textContent = markerText;
+			}
+			player.before(marker);
+
+			pipWindow.addEventListener("unload", (event) => {
+				if (document.contains(marker)) {
+					marker.after(player);
+					marker.remove();
+				}
+			});
+		}
+
+		pipWindow.document.body.append(player);
+		if (setJasc) {
+			pipWindow.Jasc = Jasc;
+			pipWindow.jasc = this;
+		}
+
+		if (copyStyleSheets) {
+			const head = pipWindow.document.head;
+			[...document.styleSheets].forEach((styleSheet) => {
+				try {
+					const cssRules = [...styleSheet.cssRules].map((rule) => rule.cssText).join("");
+					const style = document.createElement("style");
+
+					style.textContent = cssRules;
+					pipWindow.document.head.appendChild(style);
+				} catch (e) {
+					const link = document.createElement("link");
+
+					link.rel = "stylesheet";
+					link.type = styleSheet.type;
+					link.media = styleSheet.media;
+					link.href = styleSheet.href;
+					head.appendChild(link);
+				}
+			});
+			const mo = new MutationObserver((mutation) => {
+				mutation.forEach(({ addedNodes }) => {
+					if (addedNodes) {
+						addedNodes.forEach((node) => {
+							if (node.nodeName === "STYLE") {
+								head.append(node.cloneNode(true));
+							}
+						});
+					}
+				});
+			});
+			mo.observe(document.head, { childList: true });
+			pipWindow.addEventListener("unload", () => {
+				mo.disconnect();
+			});
+		}
+
+		return pipWindow;
+	}
 
 	//======================
 	// class同士の演算補助
