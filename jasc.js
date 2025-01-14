@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.31.1
+// jasc.js Ver.1.14.31.2
 
 // Copyright (c) 2022-2024 hi2ma-bu4(snows)
 // License: LGPL-2.1 license
@@ -5828,8 +5828,8 @@ class Jasc {
 	 * @param {boolean} [opt.menubar=false] - メニューバー(非推奨)
 	 * @param {boolean} [opt.toolbar=true] - ツールバー(非推奨)
 	 */
-	openWindow(url = null, { target = "_blank", popup = true, width = null, height = null, left = null, top = null, noopener = false, noreferrer = false, menubar = false, toolbar = true } = {}) {
-		if (url == null) {
+	openWindow(url, { target = "_blank", popup = true, width = null, height = null, left = null, top = null, noopener = false, noreferrer = false, menubar = false, toolbar = true } = {}) {
+		if (url === null) {
 			url = location.href;
 		}
 
@@ -5846,7 +5846,10 @@ class Jasc {
 		opt.push(`menubar=${menubar ? "yes" : "no"}`);
 		opt.push(`toolbar=${toolbar ? "yes" : "no"}`);
 
-		return window.open(url, target, opt.join(","));
+		const win = window.open(url, target, opt.join(","));
+		win.moveTo(win.screenLeft, win.screenTop);
+		win.resizeTo(win.innerWidth, win.innerHeight);
+		return win;
 	}
 
 	/**
@@ -5896,25 +5899,31 @@ class Jasc {
 			if (topStart == null) topStart = windowObj.screenTop;
 
 			let w, h, l, t;
+			let changeM = false,
+				changeR = false;
 			if (widthEnd == null) {
 				w = () => widthStart;
 			} else {
 				w = (t) => typeFunc(widthStart, widthEnd, t);
+				changeR = true;
 			}
 			if (heightEnd == null) {
 				h = () => heightStart;
 			} else {
 				h = (t) => typeFunc(heightStart, heightEnd, t);
+				changeR = true;
 			}
 			if (leftEnd == null) {
 				l = () => leftStart;
 			} else {
 				l = (t) => typeFunc(leftStart, leftEnd, t);
+				changeM = true;
 			}
 			if (topEnd == null) {
 				t = () => topStart;
 			} else {
 				t = (t) => typeFunc(topStart, topEnd, t);
+				changeM = true;
 			}
 
 			let time = 0;
@@ -5933,10 +5942,21 @@ class Jasc {
 				}
 				const tt = time / duration;
 
-				const left = l(tt);
-				const top = t(tt);
-				const width = w(tt);
-				const height = h(tt);
+				let width, height, left, top;
+				if (changeM) {
+					left = l(tt);
+					top = t(tt);
+				} else {
+					left = leftStart;
+					top = topStart;
+				}
+				if (changeR) {
+					width = w(tt);
+					height = h(tt);
+				} else {
+					width = widthStart;
+					height = heightStart;
+				}
 
 				windowObj.moveTo(left, top);
 				windowObj.resizeTo(width, height);
