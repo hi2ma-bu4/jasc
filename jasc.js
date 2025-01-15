@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.31.2
+// jasc.js Ver.1.14.32.1
 
 // Copyright (c) 2022-2024 hi2ma-bu4(snows)
 // License: LGPL-2.1 license
@@ -233,8 +233,10 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 *- バイブレーション
 * Jasc.playVibrate(duration = 0)										//バイブレーションを実行させる
 - jasc.playVibrate(duration = 0)
-* jasc.setVibrateInterval(duration, wait = 100)							//バイブレーション動作をループさせる
-* jasc.clearVibrateInterval()											//ループしているバイブレーション動作を停止させる
+* Jasc.setVibrateInterval(duration, wait = 100)							//バイブレーション動作をループさせる
+- jasc.setVibrateInterval(duration, wait = 100)
+* Jasc.clearVibrateInterval()											//ループしているバイブレーション動作を停止させる
+- jasc.clearVibrateInterval()
 *- 合成音声
 * Jasc.getVoiceNameList(lang = null)									//合成音声の種類を取得する
 - jasc.getVoiceNameList(lang = null)
@@ -871,6 +873,14 @@ class Jasc {
 		get urlQuery() {
 			return Jasc.getUrlVars(location.href);
 		},
+		get enableHardwareAcceleration() {
+			if (Jasc._hardwareAcceleration == null) {
+				const ha = Jasc._isHardwareAcceleration();
+				Jasc._hardwareAcceleration = ha;
+				return ha;
+			}
+			return Jasc._hardwareAcceleration;
+		},
 	};
 
 	#jasc_sysListData = {
@@ -903,7 +913,9 @@ class Jasc {
 	#_activeCtx = null;
 
 	// バイブレーション用
-	_vibrateIntervalId = null;
+	static _vibrateIntervalId = null;
+	// ハードウェアアクセラレーション判定用
+	static _hardwareAcceleration = null;
 
 	// textNode判定用
 	_textNode_allowedTextTag = ["SPAN", "P"];
@@ -2020,6 +2032,29 @@ class Jasc {
 			this._dispatchEvent("onLine", ol);
 		}
 	}.bind(this);
+
+	static _isHardwareAcceleration() {
+		try {
+			const canvas = document.createElement("canvas");
+			const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+
+			if (!gl) {
+				// WebGLが無効
+				return false;
+			}
+
+			const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
+			if (debugInfo) {
+				const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+
+				// ソフトウェアレンダラーかGPUかを判別
+				const softwareRenderers = ["SwiftShader", "llvmpipe", "Software Rasterizer"];
+				return !softwareRenderers.some((swRenderer) => renderer.includes(swRenderer));
+			}
+			return true;
+		} catch (e) {}
+		return false;
+	}
 
 	//======================
 	// 自動実行(game)
@@ -5544,8 +5579,9 @@ class Jasc {
 	 * @param {number|number[]} duration - ミリ秒
 	 * @param {number} [wait=100] - 待機時間
 	 * @returns {undefined}
+	 * @static
 	 */
-	setVibrateInterval(duration, wait = 100) {
+	static setVibrateInterval(duration, wait = 100) {
 		let loopTime = 0;
 		if (Array.isArray(duration)) {
 			loopTime = this.sum(duration) + wait;
@@ -5554,22 +5590,36 @@ class Jasc {
 		}
 		this.clearVibrateInterval();
 
-		this.vibrateInterval = setInterval(() => {
+		Jasc._vibrateIntervalId = setInterval(() => {
 			this.playVibrate(duration);
 		}, loopTime);
+	}
+	/**
+	 * バイブレーション動作をループさせる
+	 * @param {number|number[]} duration - ミリ秒
+	 * @param {number} [wait=100] - 待機時間
+	 * @returns {undefined}
+	 */
+	setVibrateInterval = Jasc.setVibrateInterval;
+
+	/**
+	 * ループしているバイブレーション動作を停止させる
+	 * @returns {boolean} 停止結果
+	 * @static
+	 */
+	static clearVibrateInterval() {
+		if (Jasc._vibrateIntervalId != null) {
+			clearInterval(Jasc._vibrateIntervalId);
+			Jasc._vibrateIntervalId = null;
+			return true;
+		}
+		return false;
 	}
 	/**
 	 * ループしているバイブレーション動作を停止させる
 	 * @returns {boolean} 停止結果
 	 */
-	clearVibrateInterval() {
-		if (this.vibrateInterval != null) {
-			clearInterval(this.vibrateInterval);
-			this.vibrateInterval = null;
-			return true;
-		}
-		return false;
-	}
+	clearVibrateInterval = Jasc.clearVibrateInterval;
 
 	//======================
 	// 合成音声
