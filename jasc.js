@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.32.3
+// jasc.js Ver.1.14.32.4
 
 // Copyright (c) 2022-2024 hi2ma-bu4(snows)
 // License: LGPL-2.1 license
@@ -220,6 +220,12 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 - jasc.allowNotification()
 * jasc.sendNotification(title, text, opt)								//通知送信
 - jasc.sendNotification(title, text, opt)
+*- 全画面
+* jasc.requestFullscreen(elem)											//全画面化
+* Jasc.exitFullscreen(elem = document)									//全画面表示解除
+- jasc.exitFullscreen(elem = document)
+* Jasc.getFullscreen(elem = document)									//全画面状態のDOMを取得
+- jasc.getFullscreen(elem = document)
 *- カメラ
 * jasc.startCamera(video, width = 640, opt = { video: { facingMode: "user" }, audio: false })	//カメラを起動し、映像(他stream)を取得する
 * Jasc.stopCamera(stream)												//カメラを止める
@@ -383,6 +389,13 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 * addPlugin					//プラグイン追加時
 * methodAddPlugin			//プラグインメソッド追加時
 * methodOverwritePlugin		//プラグインメソッド上書き時
+
+? 独自exEventListenerの種類
+* touchstart				//タッチ・クリック開始
+* touchmove					//タッチ・クリック移動
+* touchend					//タッチ・クリック終了
+* fullscreenchange			//フルスクリーン状態の変更
+
 
 ? 自動イベント実行順
 * document.addEventListener("readystatechange") //interactiveのみ
@@ -851,6 +864,7 @@ class Jasc {
 		"touchstart",
 		"touchmove",
 		"touchend",
+		"fullscreenchange",
 	]);
 	#jasc_exEvents = {};
 	static #_devEventCount = 0;
@@ -3091,6 +3105,12 @@ class Jasc {
 						elem.removeEventListener("mouseup", obj.callback, false);
 						elem.removeEventListener("touchend", obj.callback, false);
 						break;
+					case "fullscreenchange":
+						elem.removeEventListener("fullscreenchange", obj.callback, false);
+						elem.removeEventListener("webkitfullscreenchange", obj.callback, false);
+						elem.removeEventListener("mozfullscreenchange", obj.callback, false);
+						elem.removeEventListener("MSFullscreenChange", obj.callback, false);
+						break;
 					default:
 				}
 
@@ -3128,6 +3148,12 @@ class Jasc {
 					elem.addEventListener("pointerup", _dispatch, false);
 					elem.addEventListener("mouseup", _dispatch, false);
 					elem.addEventListener("touchend", _dispatch, false);
+					break;
+				case "fullscreenchange":
+					elem.removeEventListener("fullscreenchange", _dispatch, false);
+					elem.removeEventListener("webkitfullscreenchange", _dispatch, false);
+					elem.removeEventListener("mozfullscreenchange", _dispatch, false);
+					elem.removeEventListener("MSFullscreenChange", _dispatch, false);
 					break;
 				default:
 			}
@@ -5363,6 +5389,67 @@ class Jasc {
 	sendNotification = Jasc.sendNotification;
 
 	//======================
+	// 全画面
+	//======================
+
+	/**
+	 * 全画面表示
+	 * @param {string|HTMLElement|jQuery} [elem] - 全画面表示するDOM
+	 * @returns {Promise<undefined>|null} 全画面表示
+	 */
+	requestFullscreen(elem = document.documentElement) {
+		if (typeof elem === "string") {
+			elem = this.acq(elem);
+			if (Array.isArray(elem)) {
+				elem = elem[0];
+			}
+		}
+		elem = this.jQueryObjToDOM(elem);
+
+		const method = elem.requestFullscreen || elem.webkitRequestFullscreen || elem.mozRequestFullScreen || elem.msRequestFullscreen;
+		if (method) {
+			return method.call(elem);
+		}
+		return null;
+	}
+
+	/**
+	 * 全画面表示解除
+	 * @param {document} [elem] - 全画面表示の解除
+	 * @returns {Promise<undefined>|null} 全画面表示解除
+	 * @static
+	 */
+	static exitFullscreen(elem = document) {
+		const method = elem.exitFullscreen || elem.webkitExitFullscreen || elem.mozCancelFullScreen || elem.msExitFullscreen;
+		if (method) {
+			return method.call(elem);
+		}
+		return null;
+	}
+	/**
+	 * 全画面表示解除
+	 * @param {document} [elem] - 全画面表示の解除
+	 * @returns {undefined}
+	 */
+	exitFullscreen = Jasc.exitFullscreen;
+
+	/**
+	 * 全画面表示状態のDOMを取得
+	 * @param {document} [elem] - 全画面表示状態のDOM
+	 * @returns {HTMLElement} 全画面表示状態のDOM
+	 * @static
+	 */
+	static getFullscreen(elem = document) {
+		return elem.fullscreenElement || elem.webkitFullscreenElement || elem.mozFullScreenElement || elem.msFullscreenElement;
+	}
+	/**
+	 * 全画面表示状態のDOMを取得
+	 * @param {document} [elem] - 全画面表示状態のDOM
+	 * @returns {HTMLElement} 全画面表示状態のDOM
+	 */
+	getFullscreen = Jasc.getFullscreen;
+
+	//======================
 	// カメラ
 	//======================
 
@@ -6102,7 +6189,7 @@ class Jasc {
 
 					style.textContent = cssRules;
 					if (nonce) {
-						style.nonce = nonce;
+						style.setAttribute("nonce", nonce);
 					}
 					pipWindow.document.head.appendChild(style);
 				} catch (e) {
