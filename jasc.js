@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.32.1
+// jasc.js Ver.1.14.32.2
 
 // Copyright (c) 2022-2024 hi2ma-bu4(snows)
 // License: LGPL-2.1 license
@@ -1175,6 +1175,17 @@ class Jasc {
 		this.#pluginInit();
 
 		this.#_openFuncCreate();
+
+		{
+			let nonceElem = this.acq("[nonce]")[0];
+			let nonce = null;
+			if (nonceElem) {
+				nonce = nonceElem.getAttribute("nonce");
+			}
+			this.objDefineProperty(this.#jasc_readonlyData, "nonce", {
+				value: nonce,
+			});
+		}
 
 		this._dispatchEvent("DOMContentLoaded", e);
 
@@ -6083,12 +6094,16 @@ class Jasc {
 
 		if (copyStyleSheets) {
 			const head = pipWindow.document.head;
+			const nonce = this.#jasc_readonlyData.nonce;
 			[...document.styleSheets].forEach((styleSheet) => {
 				try {
 					const cssRules = [...styleSheet.cssRules].map((rule) => rule.cssText).join("");
 					const style = document.createElement("style");
 
 					style.textContent = cssRules;
+					if (nonce) {
+						style.setAttribute("nonce", nonce);
+					}
 					pipWindow.document.head.appendChild(style);
 				} catch (e) {
 					const link = document.createElement("link");
