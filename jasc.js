@@ -1,4 +1,4 @@
-// jasc.js Ver.1.14.32.5
+// jasc.js Ver.1.14.33.1
 
 // Copyright (c) 2022-2024 hi2ma-bu4(snows)
 // License: LGPL-2.1 license
@@ -5376,7 +5376,7 @@ class Jasc {
 	 */
 	static sendNotification(title, text, opt = {}) {
 		Jasc.isAssociative(opt) || (opt = {});
-		opt.text = text;
+		if (!opt.body) opt.text = opt.body = text;
 		return new Notification(title, opt);
 	}
 	/**
