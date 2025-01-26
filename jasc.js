@@ -1,4 +1,4 @@
-// jasc.js Ver.1.15.2.1
+// jasc.js Ver.1.15.2.2
 
 // Copyright (c) 2022-2025 hi2ma-bu4(snows)
 // License: Apache-2.0 license
@@ -790,7 +790,8 @@ class Jasc {
 
 	// 設定
 	#jasc_initSettingData = {
-		openFuncList: ["jasc.acq", "Jasc.isAssociative"],
+		/* openFuncList: ["jasc.acq", "Jasc.isAssociative"], */
+		openFuncList: [],
 		libPath: "./jascLib/",
 
 		useLib: {},
@@ -2576,6 +2577,14 @@ class Jasc {
 		}
 		return elem;
 	}
+	/**
+	 * DOM取得(jQuery非対応版)
+	 * @param {string} [str] - 取得対象
+	 * @param {Window|Document|HTMLElement} [par=document] - 取得対象の親
+	 * @returns {Window|Document|HTMLElement|HTMLElement[]}
+	 * @static
+	 */
+	static $ = Jasc.acq;
 
 	/**
 	 * DOM取得
@@ -2637,6 +2646,13 @@ class Jasc {
 		}
 		return elem;
 	}.bind(this);
+	/**
+	 * DOM取得
+	 * @param {string|jQuery|HTMLElement} [str] - 取得対象
+	 * @param {Window|Document|jQuery|HTMLElement} [par=document] - 取得対象の親
+	 * @returns {Window|Document|HTMLElement|HTMLElement[]}
+	 */
+	$ = this.acq;
 
 	/**
 	 * jQueryオブジェクト→DOM変換

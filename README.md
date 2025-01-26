@@ -1,6 +1,6 @@
 # jasc.js
 
-[![GitHub License](https://img.shields.io/github/license/hi2ma-bu4/jasc)](https://github.com/hi2ma-bu4/jasc?tab=AGPL-3.0-1-ov-file)
+[![GitHub License](https://img.shields.io/github/license/hi2ma-bu4/jasc)](https://github.com/hi2ma-bu4/jasc/blob/main/LICENSE)
 [![GitHub Release](https://img.shields.io/github/v/release/hi2ma-bu4/jasc?label=latest)](https://github.com/hi2ma-bu4/jasc/releases/latest)
 [![GitHub Tag](https://img.shields.io/github/v/tag/hi2ma-bu4/jasc?label=newest)](https://github.com/hi2ma-bu4/jasc/releases)
 [![jsDelivr hits (GitHub)](https://img.shields.io/jsdelivr/gh/hy/hi2ma-bu4/jasc?logo=jsdelivr&logoColor=%23fff)](https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.js)
