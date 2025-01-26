@@ -1,4 +1,4 @@
-// jasc.js Ver.1.15.2.2
+// jasc.js Ver.1.15.2.3
 
 // Copyright (c) 2022-2025 hi2ma-bu4(snows)
 // License: Apache-2.0 license
@@ -85,6 +85,8 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 *- 基本構成(DOM)
 - Jasc.acq(str, par = document) 										//要素取得(jQuery非対応版)
 * jasc.acq(str, par = document) 										//要素取得
+- Jasc.$(str, par = document)											//要素取得(jQuery非対応版)
+* jasc.$(str, par = document)											//要素取得
 * jasc.jQueryObjToDOM(obj)												//jQueryオブジェクト→DOM変換
 - Jasc.toggleClass(name, str)											//クラス反転(jQuery非対応版)
 * jasc.toggleClass(name, str)											//クラス反転
