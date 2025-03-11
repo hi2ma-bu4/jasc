@@ -1,4 +1,4 @@
-// jasc.js Ver.1.15.3.3
+// jasc.js Ver.1.15.3.4
 
 // Copyright (c) 2022-2025 hi2ma-bu4(snows)
 // License: Apache-2.0 license
@@ -2270,6 +2270,7 @@ class Jasc {
 	 * @param {object} [option] - オプション
 	 * @param {boolean} [option.returnName=false] - 登録した名称を返すか
 	 * @param {boolean} [option.once=false] - 一度だけ実行
+	 * @param {boolean} [option.runAnimationFrame=false] - requestAnimationFrameのタイミングで実行
 	 * @returns {-1|0|1|string|string[]} -1:イベント登録成功(即時実行) 0:イベント登録成功 1:イベント登録失敗
 	 */
 	on = this.addEventListener;
