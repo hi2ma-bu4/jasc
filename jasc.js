@@ -1,4 +1,4 @@
-// jasc.js Ver.1.15.3.5
+// jasc.js Ver.1.15.3.6
 
 // Copyright (c) 2022-2025 hi2ma-bu4(snows)
 // License: Apache-2.0 license
@@ -137,6 +137,8 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 *- 連想配列計算
 * Jasc.isAssociative(obj)												//連想配列判定
 - jasc.isAssociative(obj)
+* Jasc.equalSet(a, b)													//setを比較
+- jasc.equalSet(a, b)
 * Jasc.deepCopy(obj, opt = {})											//ディープコピー
 - jasc.deepCopy(obj, opt = {})
 * Jasc.overwriteAssociative(parents, child = {})						//連想配列を結合(上書き)[破壊的関数]
@@ -835,6 +837,7 @@ class Jasc {
 		"onLine",
 
 		"keyPress",
+		"keyChange",
 
 		// dom関係
 		"imageLoadError",
@@ -904,6 +907,8 @@ class Jasc {
 		fileTypeReg: Jasc.#_FILETYPE_REG_LIST,
 		fileTypeMime: Jasc.#_FILETYPE_MIME_MAP,
 	};
+
+	#oldPressKeySet = new Set(this.#jasc_readonlyData.pressKeySet);
 
 	// LazyLoad用
 	#lazyElemObserver;
@@ -1565,7 +1570,19 @@ class Jasc {
 
 	#_jascAutoUpdate() {
 		if (this.#jasc_readonlyData.pressKeySet.size) {
-			this._dispatchEvent("keyPress", this.#jasc_readonlyData.pressKeySet);
+			const pks = this.#jasc_readonlyData.pressKeySet;
+			const opks = this.#oldPressKeySet;
+			this._dispatchEvent("keyPress", pks);
+			if (!this.equalSet(pks, opks)) {
+				const new_pks = pks.difference(opks);
+				const del_pks = opks.difference(pks);
+				this._dispatchEvent("keyChange", {
+					add: new_pks,
+					del: del_pks,
+					all: pks,
+				});
+				this.#oldPressKeySet = new Set(pks);
+			}
 		}
 		this.#_eventListenerInit();
 		this.#pluginInit();
@@ -3913,6 +3930,34 @@ class Jasc {
 	 * @returns {boolean}
 	 */
 	isAssociative = Jasc.isAssociative;
+
+	/**
+	 * setを比較する
+	 * @param {Set} a - set1
+	 * @param {Set} b - set2
+	 * @returns {boolean}
+	 * @static
+	 */
+	static equalSet(a, b) {
+		if (a.size !== a.size) {
+			return false;
+		}
+
+		// set1の各要素がset2に含まれているかチェック
+		for (const item of a) {
+			if (!b.has(item)) {
+				return false;
+			}
+		}
+		return true;
+	}
+	/**
+	 * setを比較する
+	 * @param {Set} a - set1
+	 * @param {Set} b - set2
+	 * @returns {boolean}
+	 */
+	equalSet = Jasc.equalSet;
 
 	/**
 	 * オブジェクトをディープコピーする
