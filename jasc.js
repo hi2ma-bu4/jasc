@@ -1,4 +1,4 @@
-// jasc.js Ver.1.15.3.4
+// jasc.js Ver.1.15.3.5
 
 // Copyright (c) 2022-2025 hi2ma-bu4(snows)
 // License: Apache-2.0 license
@@ -2241,7 +2241,7 @@ class Jasc {
 						try {
 							callback(null);
 						} catch (e) {
-							this._ccLog.error(e, true);
+							this._ccLog.error(e, "", true);
 						}
 					}
 					if (returnName) {
@@ -2353,7 +2353,7 @@ class Jasc {
 						delete e[key];
 					}
 				} catch (e) {
-					this._ccLog.error(e, true);
+					this._ccLog.error(e, "", true);
 				}
 			}
 		}
@@ -2685,7 +2685,7 @@ class Jasc {
 			try {
 				return obj.get();
 			} catch (e) {
-				this._ccLog.warn(e, true);
+				this._ccLog.warn(e, "", true);
 			}
 			return obj;
 		}
@@ -6441,7 +6441,7 @@ class Jasc {
 			Object.defineProperty(obj, name, da);
 			return 0;
 		} catch (e) {
-			this._ccLog.error(e, true);
+			this._ccLog.error(e, "", true);
 		}
 		return 1;
 	}
