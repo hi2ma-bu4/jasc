@@ -1,4 +1,4 @@
-// jasc.js Ver.1.15.3.2
+// jasc.js Ver.1.15.3.3
 
 // Copyright (c) 2022-2025 hi2ma-bu4(snows)
 // License: Apache-2.0 license
@@ -6740,7 +6740,7 @@ class Jasc {
 		 * フォーマットして出力
 		 * @param {any[]} data - データ
 		 * @param {function} output - 出力関数
-		 * @private
+		 * //@private
 		 */
 		_formatOutput(data, output) {
 			let len = data.length;
