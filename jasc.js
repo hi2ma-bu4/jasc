@@ -1,4 +1,4 @@
-// jasc.js Ver.1.15.2.3
+// jasc.js Ver.1.15.2.4
 
 // Copyright (c) 2022-2025 hi2ma-bu4(snows)
 // License: Apache-2.0 license
@@ -65,8 +65,8 @@ https://cdn.jsdelivr.net/gh/hi2ma-bu4/jasc/jasc.min.js
 ? jasc動作関連
 * jasc.initSetting = args												//jasc初期設定(DOMContentLoaded以降変更不可)
 * jasc.setting = args													//jasc設定
-* jasc.addEventListener(eventType = "", callback, name = "", { returnName = false, once = false } = {})	//jasc内イベント設定
-* jasc.on(eventType = "", callback, name = "", { returnName = false, once = false } = {})				//jasc.addEventListenerと同じ
+* jasc.addEventListener(eventType = "", callback, name = "", { returnName = false, once = false, runAnimationFrame = false } = {})	//jasc内イベント設定
+* jasc.on(eventType = "", callback, name = "", { returnName = false, once = false, runAnimationFrame = false } = {})				//jasc.addEventListenerと同じ
 * jasc.removeEventListener(eventType = "", name = "")					//jasc内イベント解除
 * jasc.off(eventType = "", name = "")									//jasc.removeEventListenerと同じ
 - jasc._dispatchEvent(eventType = "", ...args)							//jasc内イベント発火[システム使用用]
@@ -2210,9 +2210,10 @@ class Jasc {
 	 * @param {object} [option] - オプション
 	 * @param {boolean} [option.returnName=false] - 登録した名称を返すか
 	 * @param {boolean} [option.once=false] - 一度だけ実行
+	 * @param {boolean} [option.runAnimationFrame=false] - requestAnimationFrameのタイミングで実行
 	 * @returns {-1|0|1|string|string[]} -1:イベント登録成功(即時実行) 0:イベント登録成功 1:イベント登録失敗
 	 */
-	addEventListener = function (eventType = "", callback, name = "", { returnName = false, once = false } = {}) {
+	addEventListener = function (eventType = "", callback, name = "", { returnName = false, once = false, runAnimationFrame = false } = {}) {
 		if (eventType === "type") {
 			return ["type", ...Object.keys(this.#jasc_events)];
 		}
@@ -2222,6 +2223,7 @@ class Jasc {
 				const json = {
 					func: callback,
 					once,
+					runAnimationFrame,
 				};
 				if (name === "") {
 					name = Jasc.setAssociativeAutoName(ev, json, "__jasc");
@@ -2233,7 +2235,15 @@ class Jasc {
 
 				// 旬を逃しても一応実行はさせる
 				if ((eventType === "DOMContentLoaded" && this.#isFlags.domLoad) || (eventType === "load" && this.#isFlags.windowLoad) || eventType === "runNow") {
-					callback(null);
+					if (runAnimationFrame) {
+						Jasc.requestAnimationFrame(() => callback(null));
+					} else {
+						try {
+							callback(null);
+						} catch (e) {
+							this._ccLog.error(e, true);
+						}
+					}
 					if (returnName) {
 						return name;
 					}
@@ -2328,11 +2338,16 @@ class Jasc {
 		const e = this.#jasc_events[eventType];
 		let c = 0;
 		for (let key in e) {
-			if (typeof e[key]?.func == "function") {
+			const o = e[key];
+			if (typeof o?.func == "function") {
 				try {
-					e[key].func(...args);
+					if (o.runAnimationFrame) {
+						Jasc.requestAnimationFrame(() => o.func(...args));
+					} else {
+						o.func(...args);
+					}
 					c++;
-					if (e[key].once) {
+					if (o.once) {
 						e[key] = null;
 						delete e[key];
 					}
