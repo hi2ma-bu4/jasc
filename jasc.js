@@ -1,4 +1,4 @@
-// jasc.js Ver.1.15.3.8
+// jasc.js Ver.1.15.3.9
 
 // Copyright (c) 2022-2025 hi2ma-bu4(snows)
 // License: Apache-2.0 license
@@ -1582,7 +1582,7 @@ class Jasc {
 				this._dispatchEvent("keyChange", {
 					add: new_pks,
 					del: del_pks,
-					all: pks,
+					current: pks,
 				});
 				this.#oldPressKeySet = new Set(pks);
 			}
