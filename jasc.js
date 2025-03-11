@@ -1,4 +1,4 @@
-// jasc.js Ver.1.15.2.4
+// jasc.js Ver.1.15.3.1
 
 // Copyright (c) 2022-2025 hi2ma-bu4(snows)
 // License: Apache-2.0 license
