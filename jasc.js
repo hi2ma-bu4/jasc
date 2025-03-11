@@ -1,4 +1,4 @@
-// jasc.js Ver.1.15.3.6
+// jasc.js Ver.1.15.3.7
 
 // Copyright (c) 2022-2025 hi2ma-bu4(snows)
 // License: Apache-2.0 license
@@ -1569,10 +1569,13 @@ class Jasc {
 	}
 
 	#_jascAutoUpdate() {
-		if (this.#jasc_readonlyData.pressKeySet.size) {
-			const pks = this.#jasc_readonlyData.pressKeySet;
-			const opks = this.#oldPressKeySet;
+		const pks = this.#jasc_readonlyData.pressKeySet;
+		const opks = this.#oldPressKeySet;
+		let s = pks.size;
+		if (s) {
 			this._dispatchEvent("keyPress", pks);
+		}
+		if (s || opks.size) {
 			if (!this.equalSet(pks, opks)) {
 				const new_pks = pks.difference(opks);
 				const del_pks = opks.difference(pks);
