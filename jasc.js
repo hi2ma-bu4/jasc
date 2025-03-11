@@ -1,4 +1,4 @@
-// jasc.js Ver.1.15.3.7
+// jasc.js Ver.1.15.3.8
 
 // Copyright (c) 2022-2025 hi2ma-bu4(snows)
 // License: Apache-2.0 license
@@ -3942,7 +3942,7 @@ class Jasc {
 	 * @static
 	 */
 	static equalSet(a, b) {
-		if (a.size !== a.size) {
+		if (a.size !== b.size) {
 			return false;
 		}
 
