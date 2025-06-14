@@ -2959,7 +2959,16 @@ class Jasc {
 	 */
 	isExternalLink(elem) {
 		elem = this.jQueryObjToDOM(elem);
-		return !(elem.href === "" || elem.href.startsWith(`http://${window.location.hostname}`) || elem.href.startsWith(`https://${window.location.hostname}`) || elem.href.startsWith("javascript:") || elem.href.startsWith("mailto:"));
+		const href = elem.href || elem.getAttribute("href");
+		if (!href) return false;
+		try {
+			const url = new URL(href, window.location.href);
+			const allowedProtocols = ["http:", "https:"];
+			return allowedProtocols.includes(url.protocol) && url.hostname !== window.location.hostname;
+		} catch (e) {
+			// hrefが不正なURL（例: javascript:, mailto: 等）
+			return false;
+		}
 	}
 
 	/**
